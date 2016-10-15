@@ -66,7 +66,9 @@
 			if (!empty($device->status))         echo "status : ". $device->status . "<br>";
 
 			$date = self::getDateAnnounced($device->announced);
+            if ($date == null) return true;
 
+            // Builds dynamic query
 			$sql = self::build_query([
 					[               "SELECT COUNT(*) FROM htbap.devices_scanned WHERE device_name = :name"],
 					[$date         ,' AND ', 'date_announced=:date_announced'],
@@ -95,28 +97,27 @@
 
 		static function getDateAnnounced($rawDate) {
 			try {
-				$txt = $rawDate;
-				$re1='.*?';	# Non-greedy match on filler
-			 $re2='((?:(?:[1]{1}\\d{1}\\d{1}\\d{1})|(?:[2]{1}\\d{3})))(?![\\d])';	# Year 1
-			 $re3='(.)';	# Any Single Character 1
-			 $re4='(.)';	# Any Single Character 2
-			 $re5='((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Sept|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?))';	# Month 1
+				$generalCharacterPattern='.*?';
+				$yearPattern='((?:(?:[1]{1}\\d{1}\\d{1}\\d{1})|(?:[2]{1}\\d{3})))(?![\\d])';
+				$singleCharacterPattern ='(.)';
+				$monthsOfYearPattern='((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Sept|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?))';
+				
+				if ($c=preg_match_all ("/".$generalCharacterPattern.$yearPattern.$singleCharacterPattern.$singleCharacterPattern.$monthsOfYearPattern."/is", $rawDate, $matches))
+				{
+					$year=$matches[1][0];
+					$month=$matches[4][0];
 
-			 if ($c=preg_match_all ("/".$re1.$re2.$re3.$re4.$re5."/is", $txt, $matches))
-			 {
-					 $year1=$matches[1][0];
-					 $c1=$matches[2][0];
-					 $c2=$matches[3][0];
-					 $month1=$matches[4][0];
-					 echo '<br>' . 'date is ' . $year1 . ", " . $month1 . '<br>';
-					 $date = date_create_from_format('Y, F, j', $year1 . ", " . $month1 . ", " . "1");
-					 echo '<br>' . 'converted date' . date_format($date, 'Y-m-d') . '<br>';
-	 					return date_format($date, 'Y-m-d');
-			 }
+					$date = date_create_from_format('Y, F, j', $year . ", " . $month . ", " . "1");
 
+                    // Display dates
+                    // echo '<br>' . 'date is ' . $year . ", " . $month . '<br>';
+                    // echo '<br>' . 'converted date' . date_format($date, 'Y-m-d') . '<br>';
+
+					return date_format($date, 'Y-m-d');
+				}
 			} catch (Exception $ex) {
 				echo 'Could not convert ' . $rawDate . '\t' . $ex->getMessage() . '<br>';
-				return '10/30/2016';
+				return null;
 			}
 		}
 	}

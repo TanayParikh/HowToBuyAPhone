@@ -22,7 +22,11 @@
 		public static function scanDevice($device) {
 
 			if (self::devicePreviouslyScanned($device)) //return;
-			{ echo "scanned previously"; } else { echo "not scanned"; }
+			{
+				echo '<br>' . "scanned previously" . '<br>';
+			} else {
+				echo '<br>' . self::setDimensions($device->dimensions) . '<br>';
+			}
 			// Parse device here
 		}
 
@@ -92,7 +96,11 @@
 		}
 
 		static function deviceAvailable($status) {
-			return !((strpos($status, "Coming soon") !== false) || (strpos($status, "Rumored") !== false));
+			return !(/*strpos($status, "Coming soon") !== false) || */ self::stringContains($status, "Rumored"));
+		}
+
+		static function stringContains($haystack, $needle) {
+			return (strpos($haystack, $needle) !== false);
 		}
 
 		static function getDateAnnounced($rawDate) {
@@ -118,6 +126,26 @@
 			} catch (Exception $ex) {
 				echo 'Could not convert ' . $rawDate . '\t' . $ex->getMessage() . '<br>';
 				return null;
+			}
+		}
+
+		static function setDimensions($dimensions) {
+		    if ($dimensions == "-") return;
+
+		    $numericPattern = '(\d*[.]\d*|\d*)';
+            $dimensionSeparatorPattern = '( x )?';
+			if (preg_match_all("/".$numericPattern.$dimensionSeparatorPattern.$numericPattern.$dimensionSeparatorPattern.$numericPattern.'( mm)?(.*)'."/", $dimensions, $matches))
+			{
+				$length=$matches[1][0];
+				$width=$matches[3][0];
+				$thickness=$matches[5][0];
+
+				if (self::stringContains($dimensions, "thickness")) {
+				    $thickness = $matches[1][0];
+					echo '<br>' . "Thickness: " . $thickness . '<br>';
+				} else {
+					echo '<br>' . "Length: " . $length . "\tWidth: " . $width . " Thickness: " . $thickness . '<br>';
+				}
 			}
 		}
 	}

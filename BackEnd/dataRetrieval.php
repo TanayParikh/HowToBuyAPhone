@@ -3,12 +3,14 @@
 	include_once("configuration.php");
 
 	class dataRetrieval {
+        private static $numericPattern = '(\d*[.]\d*|\d*)';
+        
 		public static function fetchDevices() {
 
 			$fonoapi = fonoApi::init(configuration::$apiKey);
 
 			try {
-				$devices = $fonoapi::getLatest();
+				$devices = $fonoapi::getLatest(null, 50);
 
 				foreach ($devices as $device) {
 					self::scanDevice($device);
@@ -23,9 +25,12 @@
 
 			if (self::devicePreviouslyScanned($device)) //return;
 			{
-				echo '<br>' . "scanned previously" . '<br>';
+				echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
 			} else {
-				echo '<br>' . self::setDimensions($device->dimensions) . '<br>';
+			    $output = '<br>' . self::setDimensions($device->dimensions) . '<br>';
+				$output .= self::setWeight($device->weight) . '<br> <br>';
+                echo $output;
+
 			}
 			// Parse device here
 		}
@@ -110,7 +115,7 @@
 				$singleCharacterPattern ='(.)';
 				$monthsOfYearPattern='((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Sept|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?))';
 				
-				if ($c=preg_match_all ("/".$generalCharacterPattern.$yearPattern.$singleCharacterPattern.$singleCharacterPattern.$monthsOfYearPattern."/is", $rawDate, $matches))
+				if ($c=preg_match_all("/".$generalCharacterPattern.$yearPattern.$singleCharacterPattern.$singleCharacterPattern.$monthsOfYearPattern."/is", $rawDate, $matches))
 				{
 					$year=$matches[1][0];
 					$month=$matches[4][0];
@@ -118,8 +123,7 @@
 					$date = date_create_from_format('Y, F, j', $year . ", " . $month . ", " . "1");
 
                     // Display dates
-                    // echo '<br>' . 'date is ' . $year . ", " . $month . '<br>';
-                    // echo '<br>' . 'converted date' . date_format($date, 'Y-m-d') . '<br>';
+                    echo 'Parsed Date: ' . date_format($date, 'Y-m-d');
 
 					return date_format($date, 'Y-m-d');
 				}
@@ -130,11 +134,13 @@
 		}
 
 		static function setDimensions($dimensions) {
+		    // Example: 142.8 x 69.6 x 8.1 mm (5.62 x 2.74 x 0.32 in)
+
 		    if ($dimensions == "-") return;
 
-		    $numericPattern = '(\d*[.]\d*|\d*)';
             $dimensionSeparatorPattern = '( x )?';
-			if (preg_match_all("/".$numericPattern.$dimensionSeparatorPattern.$numericPattern.$dimensionSeparatorPattern.$numericPattern.'( mm)?(.*)'."/", $dimensions, $matches))
+
+			if (preg_match_all("/".self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.'( mm)?(.*)'."/", $dimensions, $matches))
 			{
 				$length=$matches[1][0];
 				$width=$matches[3][0];
@@ -142,11 +148,22 @@
 
 				if (self::stringContains($dimensions, "thickness")) {
 				    $thickness = $matches[1][0];
-					echo '<br>' . "Thickness: " . $thickness . '<br>';
+					return '<br>' . "Thickness: " . $thickness;
 				} else {
-					echo '<br>' . "Length: " . $length . "\tWidth: " . $width . " Thickness: " . $thickness . '<br>';
+					return "Length: " . $length . "\tWidth: " . $width . " Thickness: " . $thickness;
 				}
 			}
 		}
-	}
+
+        private static function setWeight($rawWeight) {
+            // Example: 142 g (5.01 oz)
+
+            if (preg_match_all("/".self::$numericPattern.'( g)?(.*)'."/", $rawWeight, $matches))
+            {
+                $weight=$matches[1][0];
+
+                if (!empty($weight)) return "Weight: " . $weight;
+            }
+        }
+    }
 ?>

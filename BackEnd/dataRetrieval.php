@@ -28,7 +28,10 @@
 				echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
 			} else {
 			    $output = '<br>' . self::setDimensions($device->dimensions) . '<br>';
-				$output .= self::setWeight($device->weight) . '<br> <br>';
+				$output .= self::setWeight($device->weight) . '<br>';
+                $output .= self::setScreenSize($device->size) . '<br>';
+                $output .= self::setScreenResolution($device->resolution) . '<br>';
+                $output .=  '<br>';
                 echo $output;
 
 			}
@@ -148,21 +151,38 @@
 
 				if (self::stringContains($dimensions, "thickness")) {
 				    $thickness = $matches[1][0];
-					return '<br>' . "Thickness: " . $thickness;
+					return "Thickness: " . $thickness;
 				} else {
 					return "Length: " . $length . "\tWidth: " . $width . " Thickness: " . $thickness;
 				}
 			}
 		}
 
+		// Gets a single double/int from a string with an optional suffix
+        private static function getNumericFromString($rawData, $suffix = null) {
+            if (preg_match_all("/".self::$numericPattern.'(' . $suffix . ')?(.*)'."/", $rawData, $matches)) {
+                return $matches[1][0];
+            }
+        }
+
         private static function setWeight($rawWeight) {
             // Example: 142 g (5.01 oz)
+            $weight = self::getNumericFromString($rawWeight, ' g');
+            if (!empty($weight)) return "Weight: " . $weight;
+        }
 
-            if (preg_match_all("/".self::$numericPattern.'( g)?(.*)'."/", $rawWeight, $matches))
-            {
-                $weight=$matches[1][0];
+        private static function setScreenSize($rawScreenSize) {
+            // Example: 7.0 inches (~68.1% screen-to-body ratio)
+            $screenSize = self::getNumericFromString($rawScreenSize, ' inches');
+            if (!empty($screenSize)) return "Screen Size: " . $screenSize;
+        }
 
-                if (!empty($weight)) return "Weight: " . $weight;
+        private static function setScreenResolution($rawResolution)
+        {
+            if (preg_match_all("/".'(\d*)( x )(\d*)( pixels)(.*~)(\d*)( ppi)(.*)'."/", $rawResolution, $matches)) {
+                $resolution = $matches[1][0] . 'x' . $matches[3][0];
+                $ppi = $matches[6][0];
+                return "Resolution: " . $resolution . "\tPPI: " . $ppi;
             }
         }
     }

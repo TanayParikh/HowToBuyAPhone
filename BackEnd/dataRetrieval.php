@@ -31,6 +31,10 @@
 				$output .= self::setWeight($device->weight) . '<br>';
                 $output .= self::setScreenSize($device->size) . '<br>';
                 $output .= self::setScreenResolution($device->resolution) . '<br>';
+                $output .= self::setExpandableStorage($device) . '<br>';
+                $output .= self::setBluetoothVersion($device) . '<br>';
+
+
                 $output .=  '<br>';
                 echo $output;
 
@@ -179,11 +183,42 @@
 
         private static function setScreenResolution($rawResolution)
         {
+            // Example: 480 x 854 pixels (~196 ppi pixel density)
             if (preg_match_all("/".'(\d*)( x )(\d*)( pixels)(.*~)(\d*)( ppi)(.*)'."/", $rawResolution, $matches)) {
                 $resolution = $matches[1][0] . 'x' . $matches[3][0];
                 $ppi = $matches[6][0];
                 return "Resolution: " . $resolution . "\tPPI: " . $ppi;
             }
+        }
+
+        private static function setExpandableStorage($device) {
+            // Example: microSD, up to 64 GB
+            if ($device->card_slot == "No") return null;
+
+            if (preg_match_all('/(microSD, up to )(\d*)( GB)/', $device->card_slot, $matches)) {
+                $cardStorageAmount = $matches[2][0];
+                return "Card Storage Amount: " . $cardStorageAmount;
+            }
+
+            self::logDevice($device, "Could not determine external storage amount.");
+        }
+
+        private static function setBluetoothVersion($device) {
+            // Example: v4.1, A2DP, LE
+            if ($device->bluetooth == "No") return null;
+            if ($device->bluetooth == "Yes") return 0;
+
+            if (preg_match_all('/(v?)'.self::$numericPattern.'(.*)/', $device->bluetooth, $matches)) {
+                $cardStorageAmount = $matches[2][0];
+                return "Bluetooth Version: " . $cardStorageAmount;
+            }
+
+            self::logDevice($device, "Could not determine bluetooth version.");
+        }
+
+        private static function logDevice($device, $errorMessage)
+        {
+
         }
     }
 ?>

@@ -33,6 +33,8 @@
                 $output .= self::setScreenResolution($device->resolution) . '<br>';
                 $output .= self::setExpandableStorage($device) . '<br>';
                 $output .= self::setBluetoothVersion($device) . '<br>';
+                $output .= (self::isBatteryRemovable($device) ? "Removable" : "Non-removable") . '<br>';
+                $output .= self::setBatteryCapacity($device) . '<br>';
 
 
                 $output .=  '<br>';
@@ -214,6 +216,20 @@
             }
 
             self::logDevice($device, "Could not determine bluetooth version.");
+        }
+
+        private static function isBatteryRemovable($device) {
+            // Note case sensitive (Non-removable is other type)
+            return (self::stringContains($device->battery_c, "Removable"));
+        }
+
+        private static function setBatteryCapacity($device) {
+            if (preg_match_all('/([\d]+) mAh/', $device->battery_c, $matches)) {
+                $batteryCapacity = $matches[1][0];
+                return "Battery Capacity: " . $batteryCapacity;
+            }
+
+            self::logDevice($device, "Could not determine battery capacity.");
         }
 
         private static function logDevice($device, $errorMessage)

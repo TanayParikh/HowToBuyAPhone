@@ -273,7 +273,7 @@
                 for ($groupIndex = 0; $groupIndex < 2; ++$groupIndex) {
                     if (isset($matches[$numCoresIndex][$groupIndex]) &&
                         isset($matches[$processingPowerIndex][$groupIndex])) {
-                        //$totComputedCores += (int)(substr($matches[$numCoresIndex][$groupIndex], 0, 1));
+                        
                         $totProcessing += (double)($matches[$processingPowerIndex][$groupIndex]) *
                             (double)(substr($matches[$numCoresIndex][$groupIndex], 0, 1));
                     }
@@ -421,14 +421,7 @@
             curl_setopt($ch, CURLOPT_NOBODY, 1);
             curl_setopt($ch, CURLOPT_FAILONERROR, 1);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            if(curl_exec($ch)!==FALSE)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return (curl_exec($ch)!==FALSE);
         }
 
         // $_SERVER['REMOTE_ADDR']

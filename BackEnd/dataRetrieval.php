@@ -10,7 +10,7 @@
             $fonoapi = fonoApi::init(configuration::$apiKey);
 
             try {
-                $devices = $fonoapi::getLatest(null, 100);
+                $devices = $fonoapi::getLatest(null, 20);
 
                 foreach ($devices as $device) {
                     self::scanDevice($device);
@@ -28,10 +28,13 @@
             // Excludes watches from processing
             } else if (isset($device->os) && (self::stringContains($device->os, "Android Wear") || self::stringContains($device->os, "watchOS"))) {
                 echo '<br>' . $device->DeviceName . " was not processed as it is a watch device." . '<br>'. '<br>';
+            } else if (self::stringContains($device->DeviceName, "Tab") || self::stringContains($device->DeviceName, "Pad")) {
+                echo '<br>' . $device->DeviceName . " was not processed as it is a tablet device." . '<br>'. '<br>';
             } else {
                 if (!empty($device->DeviceName))    		echo "Device: ". $device->DeviceName . "<br>";
                 if (!empty($device->announced))         echo "announced: ". $device->announced . "<br>";
                 if (!empty($device->status))         		echo "status: ". $device->status . "<br>";
+                self::displayImage($device);
                 $output =  self::setDimensions($device->dimensions) . '<br>';
                 $output .= self::setWeight($device->weight) . '<br>';
                 $output .= self::setScreenSize($device->size) . '<br>';
@@ -366,10 +369,66 @@
 
         private static function logDevice($device, $errorMessage)
         {
+            // TODO: Log externally
             echo '<pre>';
             echo var_dump($device);
             echo $errorMessage;
             echo '</pre>';
+        }
+
+        // Rough prototype implementation (To fix)
+        private static function displayImage($device)
+        {
+            $brand = str_replace(' ', '-', strtolower($device->Brand));
+            $deviceName = str_replace(' ', '-', strtolower($device->DeviceName));
+            $imgURL1 = 'http://cdn2.gsmarena.com/vv/pics/'.$brand.'/'.$deviceName;
+
+            if (self::checkRemoteFile($imgURL1)) {
+                self::fetchImage($imgURL1);
+                return null;
+            }
+
+            if (explode(' ',trim($device->DeviceName))[0] == $device->Brand) {
+                $deviceName = substr(strstr($deviceName,"-"), 1);
+                $imgURL2 = 'http://cdn2.gsmarena.com/vv/pics/'.$brand.'/'.$deviceName;
+
+                if (self::checkRemoteFile($imgURL2)) {
+                    self::fetchImage($imgURL2);
+                    return null;
+                }
+            }
+
+            if (self::checkRemoteFile($imgURL1 . "-1")) {
+                self::fetchImage($imgURL1 . "-1");
+                return null;
+            } else if (self::checkRemoteFile($imgURL2 . "-1")) {
+                self::fetchImage($imgURL2 . "-1");
+                return null;
+            }
+        }
+
+        private static function fetchImage($imgURL) {
+            echo '<IMG SRC="'. $imgURL .'.jpg' .  '" ALT="some text">';
+        }
+
+        // Reference: http://stackoverflow.com/questions/1363925/check-whether-image-exists-on-remote-url
+        private static function checkRemoteFile($url)
+        {
+            $url .= '.jpg';
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL,$url);
+            // don't download content
+            curl_setopt($ch, CURLOPT_NOBODY, 1);
+            curl_setopt($ch, CURLOPT_FAILONERROR, 1);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            if(curl_exec($ch)!==FALSE)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         // $_SERVER['REMOTE_ADDR']

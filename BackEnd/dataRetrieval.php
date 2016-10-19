@@ -261,17 +261,11 @@
             if (!isset($device->cpu)) return null;
 
             $totProcessing = 0.0;
-            //$totComputedCores = 0;
             $totActualCoreCount = self::getCoreCountFromWord($device);
 
-            // TODO: Test
             if (preg_match_all('/(\dx)?(\d*[.]\d*|\d*) GHz/', $device->cpu, $matches)) {
                 $numCoresIndex = 1;
                 $processingPowerIndex = 2;
-
-                /*echo '<pre>';
-                echo var_dump($matches);
-                echo '</pre>';*/
 
                 for ($groupIndex = 0; $groupIndex < 2; ++$groupIndex) {
                     if (isset($matches[$numCoresIndex][$groupIndex]) &&
@@ -283,11 +277,8 @@
                 }
             }
 
-            /*if ((!is_null($totActualCoreCount)) && ($totActualCoreCount != $totComputedCores))  {
-                self::logDevice($device, "Computed and actual core counts do not match. Computed " . $totComputedCores . ", Actual: " . $totActualCoreCount);
-                $totComputedCores = $totActualCoreCount;
-            }*/
-
+            // When total processing can't be determined (all cores same power)
+            // Example: Quad-core 1.25 GHz Cortex-A53
             if ($totProcessing == 0)  {
                 $totProcessing = $totActualCoreCount * self::getSingleProcessingValue($device->cpu);
             }
@@ -360,7 +351,6 @@
         private static function getVideoResolution($rawFeatureData)
         {
             // Example: 1080p@30fps
-            // TODO: Confirm indexing
             if (preg_match_all('/([^0-9]*)(\d*)/', $rawFeatureData, $matches)) {
                 return $matches[0][0];
             }

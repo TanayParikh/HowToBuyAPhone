@@ -1,170 +1,178 @@
 <?php
-	include_once("fonoAPI.php");
-	include_once("configuration.php");
+    include_once("fonoAPI.php");
+    include_once("configuration.php");
 
-	class dataRetrieval {
+    class dataRetrieval {
         private static $numericPattern = '(\d*[.]\d*|\d*)';
-        
-		public static function fetchDevices() {
 
-			$fonoapi = fonoApi::init(configuration::$apiKey);
+        public static function fetchDevices() {
 
-			try {
-				$devices = $fonoapi::getLatest(null, 50);
+            $fonoapi = fonoApi::init(configuration::$apiKey);
 
-				foreach ($devices as $device) {
-					self::scanDevice($device);
-				}
+            try {
+                $devices = $fonoapi::getLatest(null, 100);
 
-			} catch (Exception $e) {
-				echo "ERROR : " . $e->getMessage();
-			}
-		}
+                foreach ($devices as $device) {
+                    self::scanDevice($device);
+                }
 
-		public static function scanDevice($device) {
+            } catch (Exception $e) {
+                echo "ERROR : " . $e->getMessage();
+            }
+        }
 
-			if (self::devicePreviouslyScanned($device)) //return;
-			{
-				echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
-			} else {
-			    $output = '<br>' . self::setDimensions($device->dimensions) . '<br>';
-				$output .= self::setWeight($device->weight) . '<br>';
+        public static function scanDevice($device) {
+
+            if (self::devicePreviouslyScanned($device))  {
+                echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
+            // Excludes watches from processing
+            } else if (isset($device->os) && (self::stringContains($device->os, "Android Wear") || self::stringContains($device->os, "watchOS"))) {
+                echo '<br>' . $device->DeviceName . " was not processed as it is a watch device." . '<br>'. '<br>';
+            } else {
+                if (!empty($device->DeviceName))    		echo "Device: ". $device->DeviceName . "<br>";
+                if (!empty($device->announced))         echo "announced: ". $device->announced . "<br>";
+                if (!empty($device->status))         		echo "status: ". $device->status . "<br>";
+                $output =  self::setDimensions($device->dimensions) . '<br>';
+                $output .= self::setWeight($device->weight) . '<br>';
                 $output .= self::setScreenSize($device->size) . '<br>';
                 $output .= self::setScreenResolution($device->resolution) . '<br>';
                 $output .= self::setExpandableStorage($device) . '<br>';
                 $output .= self::setBluetoothVersion($device) . '<br>';
-                $output .= (self::isBatteryRemovable($device) ? "Removable" : "Non-removable") . '<br>';
+                $output .= (self::isBatteryRemovable($device) ? "Removable" : "Non-removable") . ' Battery <br>';
                 $output .= self::setBatteryCapacity($device) . '<br>';
+                // $output .= self::displayFeatures($device) . '<br>';
+                $output .= self::setCPU($device) . '<br>';
+                $output .= self::setInternalStorage($device) . '<br>';
+                $output .= self::setOS($device) . '<br>';
+                $output .= self::setCamera($device) . '<br>';
+                $output .= (self::setHeadphoneJack($device) ? "3mm Jack" : "No 3mm Jack") . '<br>';
 
-
-                $output .=  '<br>';
+                $output .=  '<br> <br> <br>';
                 echo $output;
+            }
+            // Parse device here
+        }
 
-			}
-			// Parse device here
-		}
+        // Reference: http://www.gabordemooij.com/index.php?p=/tiniest_query_builder
+        private static function build_query($pieces) {
+            $sql = '';
+            $glue = NULL;
 
-		// Reference: http://www.gabordemooij.com/index.php?p=/tiniest_query_builder
-		private static function build_query($pieces) {
-		  $sql = '';
-		  $glue = NULL;
+            foreach( $pieces as $piece ) {
+                $n = count( $piece );
 
-		  foreach( $pieces as $piece ) {
-		    $n = count( $piece );
+                switch( $n ) {
+                    case 1:
+                        $sql .= " {$piece[0]} ";
+                        break;
+                    case 2:
+                        $glue = NULL;
+                        if (!is_null($piece[0])) $sql .= " {$piece[1]} ";
+                        break;
+                    case 3:
+                        $glue = ( is_null( $glue ) ) ? $piece[1] : $glue;
+                        if (!is_null($piece[0])) {
+                            $sql .= " {$glue} {$piece[2]} ";
+                            $glue = NULL;
+                        }
+                        break;
+                }
+            }
 
-				switch( $n ) {
-		      case 1:
-		        $sql .= " {$piece[0]} ";
-		        break;
-		      case 2:
-		        $glue = NULL;
-		        if (!is_null($piece[0])) $sql .= " {$piece[1]} ";
-		        break;
-		      case 3:
-		        $glue = ( is_null( $glue ) ) ? $piece[1] : $glue;
-						if (!is_null($piece[0])) {
-							$sql .= " {$glue} {$piece[2]} ";
-							$glue = NULL;
-						}
-		        break;
-		    }
-		  }
+            return $sql;
+        }
 
-		  return $sql;
-		}
+        public static function devicePreviouslyScanned($device) {
+            // Creates a PDO statement and binds the appropriate parameters
+            $db = configuration::getConnection();
 
-		public static function devicePreviouslyScanned($device) {
-			// Creates a PDO statement and binds the appropriate parameters
-			$db = configuration::getConnection();
+            if (!self::deviceAvailable($device->status)) return true;
 
-			if (!self::deviceAvailable($device->status)) return true;
-
-			if (!empty($device->DeviceName))    echo "Device : ". $device->DeviceName . "<br>";
-			if (!empty($device->announced))         echo "announced : ". $device->announced . "<br>";
-			if (!empty($device->status))         echo "status : ". $device->status . "<br>";
-
-			$date = self::getDateAnnounced($device->announced);
+            $date = self::getDateAnnounced($device->announced);
             if ($date == null) return true;
 
+            $device->announced = $date;
+
             // Builds dynamic query
-			$sql = self::build_query([
-					[               "SELECT COUNT(*) FROM htbap.devices_scanned WHERE device_name = :name"],
-					[$date         ,' AND ', 'date_announced=:date_announced'],
-					[$device->status      ,' AND ',   'status=:status']
-			]);
+            $sql = self::build_query([
+                [										"SELECT COUNT(*) FROM htbap.devices_scanned WHERE device_name = :name"],
+                [$date         			,' AND ', 'date_announced=:date_announced'],
+                [$device->status    ,' AND ',   'status=:status']
+            ]);
 
-			$device_count_stmt = $db->prepare($sql);
-			$device_count_stmt->bindParam(':name', $device->DeviceName, PDO::PARAM_INT);
+            $device_count_stmt = $db->prepare($sql);
+            $device_count_stmt->bindParam(':name', $device->DeviceName, PDO::PARAM_INT);
 
-			// Optional bindings.
-			$date &&       $device_count_stmt->bindValue(':date_announced', $date, \PDO::PARAM_STR);
-			$device->status &&    $device_count_stmt->bindValue(':status', $device->status, \PDO::PARAM_STR);
+            // Optional bindings.
+            $date &&       $device_count_stmt->bindValue(':date_announced', $date, \PDO::PARAM_STR);
+            $device->status &&    $device_count_stmt->bindValue(':status', $device->status, \PDO::PARAM_STR);
 
-			// Executes query & returns whether entries matching the description are already in db
-			if ($device_count_stmt->execute()) {
-				return (($device_count_stmt->fetchColumn()) > 0);
-			} else {
-				echo '<br>' . "query failed" . '<br>';
-				return false;
-			}
-		}
+            // Executes query & returns whether entries matching the description are already in db
+            if ($device_count_stmt->execute()) {
+                return (($device_count_stmt->fetchColumn()) > 0);
+            } else {
+                echo '<br>' . "query failed" . '<br>';
+                return false;
+            }
+        }
 
-		static function deviceAvailable($status) {
-			return !(/*strpos($status, "Coming soon") !== false) || */ self::stringContains($status, "Rumored"));
-		}
+        static function deviceAvailable($status) {
+            return !(self::stringContains($status, "Rumored"));
+        }
 
-		static function stringContains($haystack, $needle) {
-			return (strpos($haystack, $needle) !== false);
-		}
+        static function stringContains($haystack, $needle) {
+            return (strpos($haystack, $needle) !== false);
+        }
 
-		static function getDateAnnounced($rawDate) {
-			try {
-				$generalCharacterPattern='.*?';
-				$yearPattern='((?:(?:[1]{1}\\d{1}\\d{1}\\d{1})|(?:[2]{1}\\d{3})))(?![\\d])';
-				$singleCharacterPattern ='(.)';
-				$monthsOfYearPattern='((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Sept|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?))';
-				
-				if ($c=preg_match_all("/".$generalCharacterPattern.$yearPattern.$singleCharacterPattern.$singleCharacterPattern.$monthsOfYearPattern."/is", $rawDate, $matches))
-				{
-					$year=$matches[1][0];
-					$month=$matches[4][0];
+        static function isNullOrEmpty($rawText){
+            return (!isset($rawText) || empty($rawText));
+        }
 
-					$date = date_create_from_format('Y, F, j', $year . ", " . $month . ", " . "1");
+        static function getDateAnnounced($rawDate) {
+            try {
+                $generalCharacterPattern='.*?';
+                $yearPattern='((?:(?:[1]{1}\\d{1}\\d{1}\\d{1})|(?:[2]{1}\\d{3})))(?![\\d])';
+                $singleCharacterPattern ='(.)';
+                $monthsOfYearPattern='((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Sept|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?))';
 
-                    // Display dates
-                    echo 'Parsed Date: ' . date_format($date, 'Y-m-d');
+                if ($c=preg_match_all("/".$generalCharacterPattern.$yearPattern.$singleCharacterPattern.$singleCharacterPattern.$monthsOfYearPattern."/is", $rawDate, $matches))
+                {
+                    $year=$matches[1][0];
+                    $month=$matches[4][0];
 
-					return date_format($date, 'Y-m-d');
-				}
-			} catch (Exception $ex) {
-				echo 'Could not convert ' . $rawDate . '\t' . $ex->getMessage() . '<br>';
-				return null;
-			}
-		}
+                    $date = date_create_from_format('Y, F, j', $year . ", " . $month . ", " . "1");
 
-		static function setDimensions($dimensions) {
-		    // Example: 142.8 x 69.6 x 8.1 mm (5.62 x 2.74 x 0.32 in)
+                    return date_format($date, 'Y-m-d');
+                }
+            } catch (Exception $ex) {
+                echo 'Could not convert ' . $rawDate . '\t' . $ex->getMessage() . '<br>';
+                return null;
+            }
+        }
 
-		    if ($dimensions == "-") return;
+        static function setDimensions($dimensions) {
+            // Example: 142.8 x 69.6 x 8.1 mm (5.62 x 2.74 x 0.32 in)
+
+            if ($dimensions == "-") return null;
 
             $dimensionSeparatorPattern = '( x )?';
 
-			if (preg_match_all("/".self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.'( mm)?(.*)'."/", $dimensions, $matches))
-			{
-				$length=$matches[1][0];
-				$width=$matches[3][0];
-				$thickness=$matches[5][0];
+            if (preg_match_all("/".self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.'( mm)?(.*)'."/", $dimensions, $matches))
+            {
+                $length=$matches[1][0];
+                $width=$matches[3][0];
+                $thickness=$matches[5][0];
 
-				if (self::stringContains($dimensions, "thickness")) {
-				    $thickness = $matches[1][0];
-					return "Thickness: " . $thickness;
-				} else {
-					return "Length: " . $length . "\tWidth: " . $width . " Thickness: " . $thickness;
-				}
-			}
-		}
+                if (self::stringContains($dimensions, "thickness")) {
+                    $thickness = $matches[1][0];
+                    return "Thickness: " . $thickness;
+                } else {
+                    return "Length: " . $length . "\tWidth: " . $width . " Thickness: " . $thickness;
+                }
+            }
+        }
 
-		// Gets a single double/int from a string with an optional suffix
+        // Gets a single double/int from a string with an optional suffix
         private static function getNumericFromString($rawData, $suffix = null) {
             if (preg_match_all("/".self::$numericPattern.'(' . $suffix . ')?(.*)'."/", $rawData, $matches)) {
                 return $matches[1][0];
@@ -193,6 +201,10 @@
             }
         }
 
+        private static function displayFeatures($device) {
+            echo nl2br($device->features_c);
+        }
+
         private static function setExpandableStorage($device) {
             // Example: microSD, up to 64 GB
             if ($device->card_slot == "No") return null;
@@ -202,7 +214,8 @@
                 return "Card Storage Amount: " . $cardStorageAmount;
             }
 
-            self::logDevice($device, "Could not determine external storage amount.");
+            // A value of true -> 1 indicates expandable storage, of unknown max capacity
+            return self::stringContains($device->card_slot, "microSD");
         }
 
         private static function setBluetoothVersion($device) {
@@ -232,9 +245,143 @@
             self::logDevice($device, "Could not determine battery capacity.");
         }
 
+        private static function getCoreCountFromWord($device) {
+            // Example: Quad-core
+            if (self::stringContains($device->cpu, "Single")) return 1;
+            else if (self::stringContains($device->cpu, "Dual")) return 2;
+            else if (self::stringContains($device->cpu, "Quad")) return 4;
+            else if (self::stringContains($device->cpu, "Hexa")) return 6;
+            else if (self::stringContains($device->cpu, "Octa")) return 8;
+            else if (self::stringContains($device->cpu, "Deca")) return 10;
+            else return null;
+        }
+
+        private static function setCPU($device) {
+            // Example: Quad-core (2x2.35 GHz Kryo & 2x2.0 GHz Kryo)
+            if (!isset($device->cpu)) return null;
+
+            $totProcessing = 0.0;
+            //$totComputedCores = 0;
+            $totActualCoreCount = self::getCoreCountFromWord($device);
+
+            // TODO: Test
+            if (preg_match_all('/(\dx)?(\d*[.]\d*|\d*) GHz/', $device->cpu, $matches)) {
+                $numCoresIndex = 1;
+                $processingPowerIndex = 2;
+
+                /*echo '<pre>';
+                echo var_dump($matches);
+                echo '</pre>';*/
+
+                for ($groupIndex = 0; $groupIndex < 2; ++$groupIndex) {
+                    if (isset($matches[$numCoresIndex][$groupIndex]) &&
+                        isset($matches[$processingPowerIndex][$groupIndex])) {
+                        //$totComputedCores += (int)(substr($matches[$numCoresIndex][$groupIndex], 0, 1));
+                        $totProcessing += (double)($matches[$processingPowerIndex][$groupIndex]) *
+                            (double)(substr($matches[$numCoresIndex][$groupIndex], 0, 1));
+                    }
+                }
+            }
+
+            /*if ((!is_null($totActualCoreCount)) && ($totActualCoreCount != $totComputedCores))  {
+                self::logDevice($device, "Computed and actual core counts do not match. Computed " . $totComputedCores . ", Actual: " . $totActualCoreCount);
+                $totComputedCores = $totActualCoreCount;
+            }*/
+
+            if ($totProcessing == 0)  {
+                $totProcessing = $totActualCoreCount * self::getSingleProcessingValue($device->cpu);
+            }
+
+            return "Total Cores: " . $totActualCoreCount . "\tTotal Processing Power: " . $totProcessing;
+        }
+
+        private static function getSingleProcessingValue($cpu) {
+            if (preg_match_all('/[^0-9]*(\d*[.]\d*)/', $cpu, $matches)) {
+                return $matches[1][0];
+            }
+        }
+
+        private static function setInternalStorage($device)
+        {
+            if (!isset($device->internal)) return null;
+
+            // Example: 64 GB, 4 GB RAM
+            if (preg_match_all('/(\d*) (G|M)B, (\d*) (G|M)B RAM/', $device->internal, $matches)) {
+                $storage = $matches[1][0];
+                $ram = $matches[3][0];
+                return "Storage: " . $storage . "\tRAM: " . $ram;
+            }
+        }
+
+        private static function setOS($device)
+        {
+            if (!isset($device->os)) return null;
+
+            $os = self::getOSFromText($device);
+					$osVersion = null;
+
+						// Example: Android OS, v6.0.1 (Marshmallow)
+						if (preg_match_all('/[^0-9]*(\d*[.]\d*[.]\d*|\d*[.]\d*|\d*)/', $device->os, $matches)) {
+                            $osVersion = $matches[1][0];
+                        }
+
+						if (self::isNullOrEmpty($os) || self::isNullOrEmpty($osVersion)) self::logDevice($device, "Could not determine OS/Version.");
+						return "OS: " . $os . "\tVersion: " . $osVersion;
+				}
+
+        private static function getOSFromText($device) {
+            $osTypes = array("Android Wear", "Android", "iOS", "watchOS", "Tizen", "BlackBerry");
+
+            foreach ($osTypes as $os) {
+                if (self::stringContains($device->os, $os)) return $os;
+            }
+
+            return null;
+        }
+
+        private static function setCamera($device) {
+            $primary = (isset($device->primary_)) ? self::getCameraMP($device->primary_) : null;
+            $secondary = (isset($device->secondary)) ? self::getCameraMP($device->secondary) : null;
+            $video = (isset($device->video)) ? self::getVideoResolution($device->video) : null;
+
+            return "Camera - Primary: " . $primary . "\tSecondary: " . $secondary . "\tVideo: " . $video . "p";
+        }
+
+        private static function getCameraMP($rawFeatureData)
+        {
+            // Example: 20 MP, f/2.2, 28mm, laser autofocus, dual-LED (dual tone) flash
+            if (preg_match_all('/([^0-9]*)(\d*) MP/', $rawFeatureData, $matches)) {
+                return $matches[2][0];
+			}
+
+            return null;
+        }
+
+        private static function getVideoResolution($rawFeatureData)
+        {
+            // Example: 1080p@30fps
+            // TODO: Confirm indexing
+            if (preg_match_all('/([^0-9]*)(\d*)/', $rawFeatureData, $matches)) {
+                return $matches[0][0];
+            }
+
+            return null;
+        }
+
+        private static function setHeadphoneJack($device)
+        {
+            // Example: Yes
+            return self::stringContains($device->_3_5mm_jack_, "Yes");
+        }
+
         private static function logDevice($device, $errorMessage)
         {
-
+            echo '<pre>';
+            echo var_dump($device);
+            echo $errorMessage;
+            echo '</pre>';
         }
+
+        // $_SERVER['REMOTE_ADDR']
     }
 ?>

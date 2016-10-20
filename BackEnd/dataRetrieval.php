@@ -25,7 +25,7 @@
 
             if (self::devicePreviouslyScanned($device))  {
                 echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
-            // Excludes watches from processing
+                // Excludes watches from processing
             } else if (isset($device->os) && (self::stringContains($device->os, "Android Wear") || self::stringContains($device->os, "watchOS"))) {
                 echo '<br>' . $device->DeviceName . " was not processed as it is a watch device." . '<br>'. '<br>';
             } else if (self::stringContains($device->DeviceName, "Tab") || self::stringContains($device->DeviceName, "Pad")) {
@@ -273,7 +273,7 @@
                 for ($groupIndex = 0; $groupIndex < 2; ++$groupIndex) {
                     if (isset($matches[$numCoresIndex][$groupIndex]) &&
                         isset($matches[$processingPowerIndex][$groupIndex])) {
-                        
+
                         $totProcessing += (double)($matches[$processingPowerIndex][$groupIndex]) *
                             (double)(substr($matches[$numCoresIndex][$groupIndex], 0, 1));
                     }
@@ -312,16 +312,16 @@
             if (!isset($device->os)) return null;
 
             $os = self::getOSFromText($device);
-					$osVersion = null;
+            $osVersion = null;
 
-						// Example: Android OS, v6.0.1 (Marshmallow)
-						if (preg_match_all('/[^0-9]*(\d*[.]\d*[.]\d*|\d*[.]\d*|\d*)/', $device->os, $matches)) {
-                            $osVersion = $matches[1][0];
-                        }
+            // Example: Android OS, v6.0.1 (Marshmallow)
+            if (preg_match_all('/[^0-9]*(\d*[.]\d*[.]\d*|\d*[.]\d*|\d*)/', $device->os, $matches)) {
+                $osVersion = $matches[1][0];
+            }
 
-						if (self::isNullOrEmpty($os) || self::isNullOrEmpty($osVersion)) self::logDevice($device, "Could not determine OS/Version.");
-						return "OS: " . $os . "\tVersion: " . $osVersion;
-				}
+            if (self::isNullOrEmpty($os) || self::isNullOrEmpty($osVersion)) self::logDevice($device, "Could not determine OS/Version.");
+            return "OS: " . $os . "\tVersion: " . $osVersion;
+        }
 
         private static function getOSFromText($device) {
             $osTypes = array("Android Wear", "Android", "iOS", "watchOS", "Tizen", "BlackBerry");
@@ -346,7 +346,7 @@
             // Example: 20 MP, f/2.2, 28mm, laser autofocus, dual-LED (dual tone) flash
             if (preg_match_all('/([^0-9]*)(\d*) MP/', $rawFeatureData, $matches)) {
                 return $matches[2][0];
-			}
+            }
 
             return null;
         }
@@ -396,6 +396,8 @@
                     self::fetchImage($imgURL2);
                     return null;
                 }
+
+
             }
 
             if (self::checkRemoteFile($imgURL1 . "-1")) {

@@ -20,10 +20,16 @@
      if ($deviceDetail->status == "success") {
          echo $deviceDetail->DeviceName . '<br>';
          echo '<IMG SRC="'. $deviceDetail->DeviceIMG .  '" ALT="some text"> <br>';
-         echo '<pre>' . var_dump($deviceDetail->data) . '</pre>';
+         $obj_merged = null;
+
+         foreach ($deviceDetail->data as $grouping) {
+             $obj_merged = (object) array_merge((array) $obj_merged, (array) $grouping);
+         }
+
+         echo var_dump((array) $obj_merged);
+         $obj_merged->technology_p = $obj_merged->cpu;
+         echo $obj_merged->technology_p;
      }
-
-
  ?>
  </body>
 </html>

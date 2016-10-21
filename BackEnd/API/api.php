@@ -142,7 +142,7 @@
 
                             // Adds spec to data array
                             $result["data"][strtolower($th->innertext)][] = array(
-                                strip_tags($ttl) => strip_tags($nfo)
+                                self::sanitizeSpecTitle(strip_tags($ttl)) => strip_tags($nfo)
                             );
                         }
                     }
@@ -155,6 +155,17 @@
             }
 
             return $result;
+        }
+
+        // Adds underscore to start of title, if first char is numeric (php vars can't start with number)
+        // Avoids issue when object is decoded from JSON to PHP
+        private static function sanitizeSpecTitle($ttl)
+        {
+            if (is_numeric($ttl[0])) {
+                return '_' . $ttl;
+            }
+
+            return $ttl;
         }
 
         // TODO: Implement brand filtering
@@ -203,7 +214,9 @@
             // Sets brand to be first word of device name
             //$mergedFieldsDevice->Brand = explode(' ',trim($mergedFieldsDevice->DeviceName))[0];
             //$mergedFieldsDevice->_2g_bands;
-            //$mergedFieldsDevice->_3_5mm_jack = $mergedFieldsDevice->"35mm_jack_";
+
+            $mergedFieldsDevice->_3_5mm_jack = $mergedFieldsDevice->_35mm_jack_;
+            echo $mergedFieldsDevice->_3_5mm_jack;
 
             return $mergedFieldsDevice;
         }

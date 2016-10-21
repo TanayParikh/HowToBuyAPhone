@@ -1,37 +1,32 @@
 <?php
     include_once("DataSources/FonoAPI.php");
     include_once("DataSources/GsmAPI.php");
-    include_once("../Configuration.php");
+    include_once($_SERVER['DOCUMENT_ROOT'] . "/BackEnd/Configuration.php");
 
     class DeviceExtraction {
         private static $numericPattern = '(\d*[.]\d*|\d*)';
         const DATA_SOURCE = "customApi";
+        private static $exchangeRates;
 
         public static function startProcessing() {
-
-            $devices = self::fetchDevices();
-
+            $devices = self::getDevices();
+            self::setExchangeRates();
 
             foreach ($devices as $device) {
                 self::scanDevice($device);
             }
         }
 
-        private static function fetchDevices() {
+        private static function getDevices() {
             try {
                 $devices = null;
-
 
                 if (self::DATA_SOURCE == "fonoApi") {
                     $fonoapi = FonoApi::init(configuration::$apiKey);
                     $devices = $fonoapi::getLatest(null, 20);
                 } else if (self::DATA_SOURCE == "customApi") {
                     $devices = GsmAPI::getLatest();
-                    echo var_dump($devices);
                 }
-
-                // Sanitizes data objects such that return from both data sources may be treated the same.
-                $devices = self::sanitizeDevices($devices);
 
                 return $devices;
             } catch (Exception $e) {
@@ -39,12 +34,10 @@
             }
         }
 
-        private static function sanitizeDevices($devices) {
-            if (isset($devices[0]->DeviceIMG)) {
-
-            }
-
-            return $devices;
+        private static function setExchangeRates () {
+            $jsonExchangeRates = file_get_contents('http://api.fixer.io/latest?base=USD');
+            self::$exchangeRates = json_decode($jsonExchangeRates);
+            self::$exchangeRates->USD = 1;
         }
 
         private static function scanDevice($device) {
@@ -56,6 +49,7 @@
             } else if (self::devicePreviouslyScanned($device))  {
                 echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
             } else {
+                echo "scan";
                 if (!empty($device->DeviceName))    		echo "Device: ". $device->DeviceName . "<br>";
                 if (!empty($device->announced))         echo "announced: ". $device->announced . "<br>";
                 if (!empty($device->status))         		echo "status: ". $device->status . "<br>";
@@ -73,7 +67,9 @@
                 $output .= self::setInternalStorage($device) . '<br>';
                 $output .= self::setOS($device) . '<br>';
                 $output .= self::setCamera($device) . '<br>';
+                $output .= self::setTalkTime($device) . '<br>';
                 $output .= (self::setHeadphoneJack($device) ? "3mm Jack" : "No 3mm Jack") . '<br>';
+                $output .= self::setDevicePrice($device) . '<br>';
 
                 $output .=  '<br> <br> <br>';
                 echo $output;
@@ -112,7 +108,7 @@
 
         public static function devicePreviouslyScanned($device) {
             // Creates a PDO statement and binds the appropriate parameters
-            $db = configuration::getConnection();
+            $db = Configuration::getConnection();
 
             if (!self::deviceAvailable($device->status)) return true;
 
@@ -359,7 +355,7 @@
         }
 
         private static function setCamera($device) {
-            $primary = (isset($device->primary_)) ? self::getCameraMP($device->primary_) : null;
+            $primary = (isset($device->primary)) ? self::getCameraMP($device->primary) : null;
             $secondary = (isset($device->secondary)) ? self::getCameraMP($device->secondary) : null;
             $video = (isset($device->video)) ? self::getVideoResolution($device->video) : null;
 
@@ -386,10 +382,45 @@
             return null;
         }
 
+        private static function setTalkTime($device)
+        {
+            if (!isset($device->talk_time)) return null;
+
+            // Example: Up to 22 h (2G) / Up to 13 h 30 min (3G)
+            if (preg_match_all('/[^0-9]*'. self::$numericPattern . ' ?(h|H|HR|hr)/', $device->talk_time, $matches)) {
+                $talkTime = $matches[1][0];
+
+                return "Talk Time: " . $talkTime;
+            }
+        }
+
         private static function setHeadphoneJack($device)
         {
             // Example: Yes
-            return self::stringContains($device->_3_5mm_jack_, "Yes");
+            return self::stringContains($device->_3_5mm_jack, "Yes");
+        }
+
+        private static function setDevicePrice($device) {
+            // Gets the USD price of device based on current exchange rates
+            if (!isset($device->price_group)) return;
+            if (preg_match_all('/'. self::$numericPattern . ' (EUR|USD|AUD|CAD|CZK|DKK|GBP|HKD|IDR|MXN|INR|JPY|NOK|NZD|RUB)/', $device->price_group, $matches)) {
+                $deviceLocalPrice = $matches[1][0];
+                $currency = $matches[2][0];
+
+                if (!isNullOrEmpty($deviceLocalPrice) && !isNullOrEmpty($currency)) {
+                    $device->Price = self::getUSDPrice($deviceLocalPrice, $currency);
+                }
+            }
+
+            if (isset($device->Price) && !is_null($device->Price)) {
+                return "Price: " . $device->Price;
+            }
+
+            return null;
+        }
+
+        private static function getUSDPrice($devicePrice, $currency) {
+            return ($devicePrice / self::$exchangeRates->rates->$currency);
         }
 
         private static function logDevice($device, $errorMessage)

@@ -43,7 +43,7 @@
         }
         ####################### END cURL ##########################
 
-        function search($q = "")
+        function search($brand = null)
         {
             $result = array();
 
@@ -157,6 +157,44 @@
             return $result;
         }
 
+        // TODO: Implement brand filtering
+        public static function getLatest($brand = null, $limit = 1) {
+            $deviceAPI = new API();
+            $rawDevices = $deviceAPI->search($brand);
+            $parsedDevices = array();
+            echo "test1";
+            // Indicates devices were found
+            if ($rawDevices["status"] == "success") {
+                foreach ($rawDevices["data"] as $device) {
+                    $deviceDetail = $deviceAPI->detail($device["slug"]);
+
+                    if ($deviceDetail->status == "success") {
+                        //echo $deviceDetail->DeviceName . '<br>';
+                        //echo '<IMG SRC="'. $deviceDetail->DeviceIMG .  '" ALT="some text"> <br>';
+                        $mergedFieldsDevice = null;
+
+                        // Merges together specifications from different groupings (Platform, Memory, Camera etc)
+                        foreach ($deviceDetail->data as $grouping) {
+                            $mergedFieldsDevice = (object) array_merge((array) $mergedFieldsDevice, (array) $grouping);
+                        }
+
+                        // Adds device name and image from main device detail object, to merged device object
+                        $mergedFieldsDevice->DeviceName = $deviceDetail->DeviceName;
+                        $mergedFieldsDevice->DeviceIMG = $deviceDetail->DeviceIMG;
+
+                        //echo var_dump((array) $mergedFieldsDevice);
+                        $parsedDevices[] = $mergedFieldsDevice;
+                    }
+
+                    // Returns only one device
+                    if ($limit == 1) {
+                        break;
+                    }
+                }
+            }
+
+            return $parsedDevices;
+        }
     }
 
 ?>

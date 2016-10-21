@@ -1,35 +1,54 @@
 <?php
     include_once("fonoAPI.php");
     include_once("configuration.php");
+    include_once ("API/api.php");
 
     class dataRetrieval {
         private static $numericPattern = '(\d*[.]\d*|\d*)';
+        const DATA_SOURCE = "customApi";
 
-        public static function fetchDevices() {
+        public static function startProcessing() {
+            $devices = self::fetchDevices();
 
-            $fonoapi = fonoApi::init(configuration::$apiKey);
+            foreach ($devices as $device) {
+                self::scanDevice($device);
+            }
+        }
 
+        private static function fetchDevices() {
             try {
-                $devices = $fonoapi::getLatest(null, 20);
+                $devices = null;
 
-                foreach ($devices as $device) {
-                    self::scanDevice($device);
+                if (self::DATA_SOURCE == "fonoApi") {
+                    $fonoapi = fonoApi::init(configuration::$apiKey);
+                    $devices = $fonoapi::getLatest(null, 20);
+                } else if (self::DATA_SOURCE == "customApi") {
+                    $devices = API::getLatest();
                 }
 
+                // Sanitizes data objects such that return from both data sources may be treated the same.
+                //$devices = self::sanitizeDevices($devices);
+
+                return $devices;
             } catch (Exception $e) {
                 echo "ERROR : " . $e->getMessage();
             }
         }
 
-        public static function scanDevice($device) {
+        private static function sanitizeDevices($devices) {
+            //if (isset())
 
-            if (self::devicePreviouslyScanned($device))  {
-                echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
-                // Excludes watches from processing
-            } else if (isset($device->os) && (self::stringContains($device->os, "Android Wear") || self::stringContains($device->os, "watchOS"))) {
+            return $devices;
+        }
+
+        private static function scanDevice($device) {
+
+            if (isset($device->os) && (self::stringContains($device->os, "Android Wear") || self::stringContains($device->os, "watchOS"))) {
                 echo '<br>' . $device->DeviceName . " was not processed as it is a watch device." . '<br>'. '<br>';
             } else if (self::stringContains($device->DeviceName, "Tab") || self::stringContains($device->DeviceName, "Pad")) {
                 echo '<br>' . $device->DeviceName . " was not processed as it is a tablet device." . '<br>'. '<br>';
+            } else if (self::devicePreviouslyScanned($device))  {
+                echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
             } else {
                 if (!empty($device->DeviceName))    		echo "Device: ". $device->DeviceName . "<br>";
                 if (!empty($device->announced))         echo "announced: ". $device->announced . "<br>";

@@ -12,13 +12,6 @@
  <body>
  <?php
      dataRetrieval::startProcessing();
-
-
-
-
-
-
-
  ?>
  </body>
 </html>

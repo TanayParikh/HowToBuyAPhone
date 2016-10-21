@@ -162,7 +162,7 @@
             $deviceAPI = new API();
             $rawDevices = $deviceAPI->search($brand);
             $parsedDevices = array();
-            echo "test1";
+
             // Indicates devices were found
             if ($rawDevices["status"] == "success") {
                 foreach ($rawDevices["data"] as $device) {
@@ -182,6 +182,8 @@
                         $mergedFieldsDevice->DeviceName = $deviceDetail->DeviceName;
                         $mergedFieldsDevice->DeviceIMG = $deviceDetail->DeviceIMG;
 
+                        $mergedFieldsDevice = self::sanitizeDevice($mergedFieldsDevice);
+
                         //echo var_dump((array) $mergedFieldsDevice);
                         $parsedDevices[] = $mergedFieldsDevice;
                     }
@@ -194,6 +196,16 @@
             }
 
             return $parsedDevices;
+        }
+
+        private static function sanitizeDevice($mergedFieldsDevice)
+        {
+            // Sets brand to be first word of device name
+            //$mergedFieldsDevice->Brand = explode(' ',trim($mergedFieldsDevice->DeviceName))[0];
+            //$mergedFieldsDevice->_2g_bands;
+            //$mergedFieldsDevice->_3_5mm_jack = $mergedFieldsDevice->"35mm_jack_";
+
+            return $mergedFieldsDevice;
         }
     }
 

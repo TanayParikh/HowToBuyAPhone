@@ -27,7 +27,7 @@
                 }
 
                 // Sanitizes data objects such that return from both data sources may be treated the same.
-                //$devices = self::sanitizeDevices($devices);
+                $devices = self::sanitizeDevices($devices);
 
                 return $devices;
             } catch (Exception $e) {
@@ -36,7 +36,9 @@
         }
 
         private static function sanitizeDevices($devices) {
-            //if (isset())
+            if (isset($devices[0]->DeviceIMG)) {
+
+            }
 
             return $devices;
         }
@@ -53,7 +55,7 @@
                 if (!empty($device->DeviceName))    		echo "Device: ". $device->DeviceName . "<br>";
                 if (!empty($device->announced))         echo "announced: ". $device->announced . "<br>";
                 if (!empty($device->status))         		echo "status: ". $device->status . "<br>";
-                self::displayImage($device);
+                self::fetchImage($device->DeviceIMG);
                 $output =  self::setDimensions($device->dimensions) . '<br>';
                 $output .= self::setWeight($device->weight) . '<br>';
                 $output .= self::setScreenSize($device->size) . '<br>';
@@ -391,58 +393,12 @@
             // TODO: Log externally
             echo '<pre>';
             echo var_dump($device);
-            echo $errorMessage;
             echo '</pre>';
-        }
-
-        // Rough prototype implementation (To fix)
-        private static function displayImage($device)
-        {
-            $brand = str_replace(' ', '-', strtolower($device->Brand));
-            $deviceName = str_replace(' ', '-', strtolower($device->DeviceName));
-            $imgURL1 = 'http://cdn2.gsmarena.com/vv/pics/'.$brand.'/'.$deviceName;
-
-            if (self::checkRemoteFile($imgURL1)) {
-                self::fetchImage($imgURL1);
-                return null;
-            }
-
-            if (explode(' ',trim($device->DeviceName))[0] == $device->Brand) {
-                $deviceName = substr(strstr($deviceName,"-"), 1);
-                $imgURL2 = 'http://cdn2.gsmarena.com/vv/pics/'.$brand.'/'.$deviceName;
-
-                if (self::checkRemoteFile($imgURL2)) {
-                    self::fetchImage($imgURL2);
-                    return null;
-                }
-
-
-            }
-
-            if (self::checkRemoteFile($imgURL1 . "-1")) {
-                self::fetchImage($imgURL1 . "-1");
-                return null;
-            } else if (self::checkRemoteFile($imgURL2 . "-1")) {
-                self::fetchImage($imgURL2 . "-1");
-                return null;
-            }
+            echo $errorMessage;
         }
 
         private static function fetchImage($imgURL) {
-            echo '<IMG SRC="'. $imgURL .'.jpg' .  '" ALT="some text">';
-        }
-
-        // Reference: http://stackoverflow.com/questions/1363925/check-whether-image-exists-on-remote-url
-        private static function checkRemoteFile($url)
-        {
-            $url .= '.jpg';
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL,$url);
-            // don't download content
-            curl_setopt($ch, CURLOPT_NOBODY, 1);
-            curl_setopt($ch, CURLOPT_FAILONERROR, 1);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            return (curl_exec($ch)!==FALSE);
+            echo '<IMG SRC="'. $imgURL . '" ALT="some text">';
         }
 
         // $_SERVER['REMOTE_ADDR']

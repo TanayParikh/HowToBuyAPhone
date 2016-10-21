@@ -1,14 +1,16 @@
 <?php
-    include_once("fonoAPI.php");
-    include_once("configuration.php");
-    include_once ("API/api.php");
+    include_once("DataSources/FonoAPI.php");
+    include_once("DataSources/GsmAPI.php");
+    include_once("../Configuration.php");
 
-    class dataRetrieval {
+    class DeviceExtraction {
         private static $numericPattern = '(\d*[.]\d*|\d*)';
         const DATA_SOURCE = "customApi";
 
         public static function startProcessing() {
+
             $devices = self::fetchDevices();
+
 
             foreach ($devices as $device) {
                 self::scanDevice($device);
@@ -19,11 +21,13 @@
             try {
                 $devices = null;
 
+
                 if (self::DATA_SOURCE == "fonoApi") {
-                    $fonoapi = fonoApi::init(configuration::$apiKey);
+                    $fonoapi = FonoApi::init(configuration::$apiKey);
                     $devices = $fonoapi::getLatest(null, 20);
                 } else if (self::DATA_SOURCE == "customApi") {
-                    $devices = API::getLatest();
+                    $devices = GsmAPI::getLatest();
+                    echo var_dump($devices);
                 }
 
                 // Sanitizes data objects such that return from both data sources may be treated the same.

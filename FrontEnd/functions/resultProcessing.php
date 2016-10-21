@@ -1,6 +1,6 @@
 <?php
 	// Setting the cookie
-	setcookie( "TestCookie", $value, strtotime( '+30 days' ) );
+	/*setcookie( "TestCookie", $value, strtotime( '+30 days' ) );
 
 	function start_processing() {
 		//$selected_options = get_selected_options();
@@ -48,12 +48,12 @@
 	}
 
 	function get_selected_options() {
-		/*
+
 		// set the cookies
-		setcookie("cookie[three]", "cookiethree");
-		setcookie("cookie[two]", "cookietwo");
-		setcookie("cookie[one]", "cookieone");
-		*/
+		//setcookie("cookie[three]", "cookiethree");
+		//setcookie("cookie[two]", "cookietwo");
+		//setcookie("cookie[one]", "cookieone");
+
 
 		// Determine assoc naming convention and apply here
 		// Verify all necessary values are there
@@ -85,5 +85,5 @@
 		//$get_devices_stmt->setFetchMode(PDO::FETCH_ASSOC);
 		$get_devices_stmt->execute();
 		return $get_devices_stmt->fetchAll(PDO::FETCH_COLUMN);
-	}
+	}*/
 ?>

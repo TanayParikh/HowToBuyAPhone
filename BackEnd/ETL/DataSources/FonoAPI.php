@@ -1,6 +1,6 @@
 <?php
 
-class fonoApi
+class FonoAPI
 {
 	static $_ApiKey = null;
 	static $debug = false;

@@ -1,8 +1,7 @@
 <?php
     ini_set('display_errors',1); 
     error_reporting(E_ALL);
-    include_once("dataRetrieval.php");
-    include_once("API/api.php");
+    include_once("ETL/DeviceExtraction.php");
 ?>
 
 <html>
@@ -11,7 +10,7 @@
  </head>
  <body>
  <?php
-     dataRetrieval::startProcessing();
+     DeviceExtraction::startProcessing();
  ?>
  </body>
 </html>

@@ -7,16 +7,15 @@
      * Contributor: Tanay Parikh
      **/
 
+    include_once($_SERVER['DOCUMENT_ROOT'] . "/BackEnd/Resources/simple_html_dom.php");
+
     error_reporting(0);
 
-    class API
+    class GsmAPI
     {
 
         function __construct()
         {
-            // Include library simple html dom
-            require("simple_html_dom.php");
-
             // Fix bug slug symbol
             $this->symbol = array("&", "+");
             $this->word = array("_and_", "_plus_");
@@ -170,14 +169,18 @@
 
         // TODO: Implement brand filtering
         public static function getLatest($brand = null, $limit = 1) {
-            $deviceAPI = new API();
+            $deviceAPI = new GsmAPI();
             $rawDevices = $deviceAPI->search($brand);
             $parsedDevices = array();
+
+
 
             // Indicates devices were found
             if ($rawDevices["status"] == "success") {
                 foreach ($rawDevices["data"] as $device) {
                     $deviceDetail = $deviceAPI->detail($device["slug"]);
+
+
 
                     if ($deviceDetail->status == "success") {
                         //echo $deviceDetail->DeviceName . '<br>';
@@ -193,8 +196,6 @@
                         $mergedFieldsDevice->DeviceName = $deviceDetail->DeviceName;
                         $mergedFieldsDevice->DeviceIMG = $deviceDetail->DeviceIMG;
 
-                        $mergedFieldsDevice = self::sanitizeDevice($mergedFieldsDevice);
-
                         //echo var_dump((array) $mergedFieldsDevice);
                         $parsedDevices[] = $mergedFieldsDevice;
                     }
@@ -207,18 +208,6 @@
             }
 
             return $parsedDevices;
-        }
-
-        private static function sanitizeDevice($mergedFieldsDevice)
-        {
-            // Sets brand to be first word of device name
-            //$mergedFieldsDevice->Brand = explode(' ',trim($mergedFieldsDevice->DeviceName))[0];
-            //$mergedFieldsDevice->_2g_bands;
-
-            $mergedFieldsDevice->_3_5mm_jack = $mergedFieldsDevice->_35mm_jack_;
-            echo $mergedFieldsDevice->_3_5mm_jack;
-
-            return $mergedFieldsDevice;
         }
     }
 

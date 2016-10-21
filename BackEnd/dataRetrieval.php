@@ -55,7 +55,7 @@
                 if (!empty($device->DeviceName))    		echo "Device: ". $device->DeviceName . "<br>";
                 if (!empty($device->announced))         echo "announced: ". $device->announced . "<br>";
                 if (!empty($device->status))         		echo "status: ". $device->status . "<br>";
-                self::fetchImage($device->DeviceIMG);
+                self::displayDeviceImage($device);
                 $output =  self::setDimensions($device->dimensions) . '<br>';
                 $output .= self::setWeight($device->weight) . '<br>';
                 $output .= self::setScreenSize($device->size) . '<br>';
@@ -397,8 +397,10 @@
             echo $errorMessage;
         }
 
-        private static function fetchImage($imgURL) {
-            echo '<IMG SRC="'. $imgURL . '" ALT="some text">';
+        private static function displayDeviceImage($device) {
+            if (isset($device->DeviceIMG)) {
+                echo '<img src="' . $device->DeviceIMG . '" alt="' . $device->DeviceName . '">';
+            }
         }
 
         // $_SERVER['REMOTE_ADDR']

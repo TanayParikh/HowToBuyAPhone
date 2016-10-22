@@ -19,7 +19,6 @@
             // Fix bug slug symbol
             $this->symbol = array("&", "+");
             $this->word = array("_and_", "_plus_");
-
         }
 
         ####################### NGE cURL ##########################
@@ -129,19 +128,19 @@
                         // Runs through each spec in group (table row)
                         foreach ($table->find('tr') as $tr) {
                             // Gets the spec title
-                            ($tr->find('td', 0) == "&nbsp;" ? $ttl = "empty" : $ttl = $tr->find('td', 0));
 
-                            // Sanitizes specification title
-                            $search  = array(".", ",", "&", "-", " ");
-                            $replace = array("", "", "", "_", "_");
-                            $ttl = strtolower(str_replace($search, $replace, $ttl));
+                            $ttl = ($tr->find('td', 0)->innertext == "&nbsp;") ? (strtolower($th) . '_c') : $tr->find('td', 0);
 
                             // Gets specification info
                             $nfo = $tr->find('td', 1);
 
+                            // Sanitizes specification title/value
+                            $ttl = self::sanitizeSpecTitle($ttl);
+                            $nfo = self::sanitizeSpecValue($nfo);
+
                             // Adds spec to data array
                             $result["data"][strtolower($th->innertext)][] = array(
-                                self::sanitizeSpecTitle(strip_tags($ttl)) => strip_tags($nfo)
+                                $ttl => $nfo
                             );
                         }
                     }
@@ -156,15 +155,25 @@
             return $result;
         }
 
-        // Adds underscore to start of title, if first char is numeric (php vars can't start with number)
-        // Avoids issue when object is decoded from JSON to PHP
-        private static function sanitizeSpecTitle($ttl)
-        {
-            if (is_numeric($ttl[0])) {
-                return '_' . $ttl;
+        private static function sanitizeSpecValue($nfo) {
+            return strip_tags($nfo);
+        }
+
+        private static function sanitizeSpecTitle($ttl) {
+            // Sanitizes specification title
+            $search  = array(".", ",", "&", "-", " ");
+            $replace = array("_", "_", "", "_", "_");
+            $ttl = strtolower(str_replace($search, $replace, $ttl));
+            $ttl = strip_tags($ttl);
+
+            // Adds underscore to start if first char is numeric
+            if (is_numeric(substr($ttl, 0, 1))) {
+                $ttl = '_' . $ttl;
             }
 
-            return $ttl;
+            //echo "TTL2: " . strip_tags($ttl) . '<br>';
+
+            return strip_tags($ttl);
         }
 
         // TODO: Implement brand filtering
@@ -173,14 +182,10 @@
             $rawDevices = $deviceAPI->search($brand);
             $parsedDevices = array();
 
-
-
             // Indicates devices were found
             if ($rawDevices["status"] == "success") {
                 foreach ($rawDevices["data"] as $device) {
                     $deviceDetail = $deviceAPI->detail($device["slug"]);
-
-
 
                     if ($deviceDetail->status == "success") {
                         //echo $deviceDetail->DeviceName . '<br>';
@@ -196,6 +201,9 @@
                         $mergedFieldsDevice->DeviceName = $deviceDetail->DeviceName;
                         $mergedFieldsDevice->DeviceIMG = $deviceDetail->DeviceIMG;
 
+                        // Sets device brand
+                        $mergedFieldsDevice = self::addBrand($mergedFieldsDevice);
+
                         //echo var_dump((array) $mergedFieldsDevice);
                         $parsedDevices[] = $mergedFieldsDevice;
                     }
@@ -208,6 +216,12 @@
             }
 
             return $parsedDevices;
+        }
+
+        private static function addBrand($mergedFieldsDevice) {
+            // Sets brand to be first word of device name
+            $mergedFieldsDevice->Brand = explode(' ',trim($mergedFieldsDevice->DeviceName))[0];
+            return $mergedFieldsDevice;
         }
     }
 

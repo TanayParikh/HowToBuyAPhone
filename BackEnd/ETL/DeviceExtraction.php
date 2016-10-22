@@ -25,7 +25,7 @@
                     $fonoapi = FonoApi::init(configuration::$apiKey);
                     $devices = $fonoapi::getLatest(null, 20);
                 } else if (self::DATA_SOURCE == "customApi") {
-                    $devices = GsmAPI::getLatest();
+                    $devices = GsmAPI::getLatest(null, 1);
                 }
 
                 return $devices;
@@ -49,12 +49,14 @@
             } else if (self::devicePreviouslyScanned($device))  {
                 echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
             } else {
-                echo "scan";
-                if (!empty($device->DeviceName))    		echo "Device: ". $device->DeviceName . "<br>";
-                if (!empty($device->announced))         echo "announced: ". $device->announced . "<br>";
-                if (!empty($device->status))         		echo "status: ". $device->status . "<br>";
+                if (!empty($device->DeviceName))    		echo "<h1>". $device->DeviceName . "</h1>";
+                if (!empty($device->Brand))    		echo "<h2>". $device->Brand . "</h2>";
+                if (!empty($device->announced))         echo "Announced: ". $device->announced . "<br>";
+                if (!empty($device->status))         		echo "Status: ". $device->status . "<br>";
                 self::displayDeviceImage($device);
-                $output =  self::setDimensions($device->dimensions) . '<br>';
+
+                $output =  '<br>';
+                $output .=  self::setDimensions($device->dimensions) . '<br>';
                 $output .= self::setWeight($device->weight) . '<br>';
                 $output .= self::setScreenSize($device->size) . '<br>';
                 $output .= self::setScreenResolution($device->resolution) . '<br>';
@@ -397,17 +399,18 @@
         private static function setHeadphoneJack($device)
         {
             // Example: Yes
-            return self::stringContains($device->_3_5mm_jack, "Yes");
+            return self::stringContains($device->_3_5mm_jack_, "Yes");
         }
 
         private static function setDevicePrice($device) {
             // Gets the USD price of device based on current exchange rates
-            if (!isset($device->price_group)) return;
+            if (!isset($device->price_group)) return null;
+
             if (preg_match_all('/'. self::$numericPattern . ' (EUR|USD|AUD|CAD|CZK|DKK|GBP|HKD|IDR|MXN|INR|JPY|NOK|NZD|RUB)/', $device->price_group, $matches)) {
                 $deviceLocalPrice = $matches[1][0];
                 $currency = $matches[2][0];
 
-                if (!isNullOrEmpty($deviceLocalPrice) && !isNullOrEmpty($currency)) {
+                if (isset($deviceLocalPrice) && isset($currency)) {
                     $device->Price = self::getUSDPrice($deviceLocalPrice, $currency);
                 }
             }
@@ -420,7 +423,7 @@
         }
 
         private static function getUSDPrice($devicePrice, $currency) {
-            return ($devicePrice / self::$exchangeRates->rates->$currency);
+            return round(($devicePrice / self::$exchangeRates->rates->$currency), 2);
         }
 
         private static function logDevice($device, $errorMessage)

@@ -1,7 +1,7 @@
 <?php
     ini_set('display_errors',1); 
     error_reporting(E_ALL);
-    include_once("ETL/DeviceExtraction.php");
+    include_once("ETL/ETLHandler.php");
 ?>
 
 <html>
@@ -10,7 +10,7 @@
  </head>
  <body>
  <?php
-     DeviceExtraction::startProcessing();
+     ETLHandler::startProcessing();
  ?>
  </body>
 </html>

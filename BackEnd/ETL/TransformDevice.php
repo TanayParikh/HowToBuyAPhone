@@ -194,7 +194,7 @@
 
         private function setRemovableBattery() {
             // Note case sensitive (Non-removable is other type)
-            $removableBattery = stringContains($this->rawDevice->battery_c, "Removable");
+            $removableBattery = stringContains($this->rawDevice->battery_c, "Removable") ? "1" : "0";
             $this->transformedDevice->removable_battery = $removableBattery;
             return $removableBattery;
         }
@@ -266,8 +266,8 @@
                 $storage = $matches[1][0];
                 $ram = $matches[3][0];
 
-                $this->transformedDevice->storage = $storage;
-                $this->transformedDevice->ram = $ram;
+                if (!isNullOrEmpty($storage)) $this->transformedDevice->storage = $storage;
+                if (!isNullOrEmpty($ram)) $this->transformedDevice->ram = $ram;
                 return "Storage: " . $storage . "\tRAM: " . $ram;
             }
         }
@@ -340,7 +340,7 @@
         private function setHeadphoneJack()
         {
             // Example: Yes
-            $jackPresent = stringContains($this->rawDevice->_3_5mm_jack_, "Yes");
+            $jackPresent = stringContains($this->rawDevice->_3_5mm_jack_, "Yes")  ? "1" : "0";;
             $this->transformedDevice->_3_5mm_jack_ = $jackPresent;
             return $jackPresent;
         }

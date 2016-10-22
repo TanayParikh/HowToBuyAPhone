@@ -21,13 +21,8 @@
 
         function transformDevice() {
             $rawDevice = $this->rawDevice;
-            if (!empty($rawDevice->DeviceName))    		echo "<h1>". $rawDevice->DeviceName . "</h1>";
-            if (!empty($rawDevice->Brand))    		echo "<h2>". $rawDevice->Brand . "</h2>";
-            if (!empty($rawDevice->announced))         echo "Announced: ". $rawDevice->announced . "<br>";
-            if (!empty($rawDevice->status))         		echo "Status: ". $rawDevice->status . "<br>";
-            self::displayDeviceImage($rawDevice);
+            $output = $this->setDeviceIdentifiers();
 
-            $output  =  '<br>';
             $output .= $this->setDimensions($rawDevice->dimensions) . '<br>';
             $output .= $this->setWeight($rawDevice->weight) . '<br>';
             $output .= $this->setScreenSize($rawDevice->size) . '<br>';
@@ -41,12 +36,44 @@
             $output .= $this->setOS($rawDevice) . '<br>';
             $output .= $this->setCamera($rawDevice) . '<br>';
             $output .= $this->setTalkTime($rawDevice) . '<br>';
-            $output .= ($this->setHeadphoneJack($rawDevice) ? "3mm Jack" : "No 3mm Jack") . '<br>';
+            $output .= ($this->setHeadphoneJack($rawDevice) ? "3mm Jack Present" : "No 3mm Jack") . '<br>';
             $output .= $this->setDevicePrice($rawDevice) . '<br>';
 
             $output .=  '<br> <br> <br>';
             echo $output;
         }
+
+        function setDeviceIdentifiers() {
+            $output = null;
+
+            if (!isNullOrEmpty($this->rawDevice->DeviceName)) {
+                $output .= "<h1>" . $this->rawDevice->DeviceName . "</h1>";
+                $this->transformedDevice->DeviceName = $this->rawDevice->DeviceName;
+            }
+
+            if (!isNullOrEmpty($this->rawDevice->Brand)) {
+                $output .= "<h2>". $this->rawDevice->Brand . "</h2>";
+                $this->transformedDevice->Brand = $this->rawDevice->Brand;
+            }
+
+            if (!isNullOrEmpty($this->rawDevice->announced)) {
+                $output .= "Date Announced: ". $this->rawDevice->announced . "<br>";
+                $this->transformedDevice->announced = $this->rawDevice->announced;
+            }
+
+            if (!isNullOrEmpty($this->rawDevice->status)) {
+                $output .= "Status: ". $this->rawDevice->status . "<br>";
+                $this->transformedDevice->status = $this->rawDevice->status;
+            }
+
+            if (!isNullOrEmpty($this->rawDevice->DeviceIMG)) {
+                $output .=  $this->displayDeviceImage($this->rawDevice) . '<br>';
+                $this->transformedDevice->DeviceIMG = $this->rawDevice->DeviceIMG;
+            }
+
+            return $output;
+        }
+
         public static function init($saveToDatabase = false, $displayDevice = false) {
             self::$saveToDatabase = $saveToDatabase;
             self::$displayDevice = $displayDevice;
@@ -297,11 +324,9 @@
                 }
             }
 
-            if (isset($device->Price) && !is_null($device->Price)) {
+            if (isset($device->Price) && !is_null($device->Price) && ($device->Price != 0)) {
                 return "Price: $" . $device->Price;
             }
-
-            return null;
         }
 
         private static function getUSDPrice($devicePrice, $currency) {
@@ -319,7 +344,7 @@
 
         private static function displayDeviceImage($device) {
             if (isset($device->DeviceIMG)) {
-                echo '<img src="' . $device->DeviceIMG . '" alt="' . $device->DeviceName . '">';
+                return '<img src="' . $device->DeviceIMG . '" alt="' . $device->DeviceName . '">';
             }
         }
     }

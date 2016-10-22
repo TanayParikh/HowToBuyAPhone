@@ -18,7 +18,7 @@
             if (isset(self::$specificationReference)) return null;
 
             $db = Configuration::getConnection();
-            $stmt = $db->prepare("SELECT id, name, level, units, api_key FROM htbap.specification_definition");
+            $stmt = $db->prepare("SELECT id, name, level, units, api_key, object_key FROM htbap.specification_definition");
 
             $stmt->execute();
 
@@ -29,10 +29,16 @@
             self::$specificationReference = array();
 
             foreach ($definitions as $definition) {
-                self::$specificationReference[$definition->name] = $definition;
-                self::$specificationReference[$definition->object_key] = $definition;
+                if (isset($definition->object_key)) {
+                    //self::$specificationReference[$definition->name] = $definition;
+                    self::$specificationReference[$definition->object_key] = $definition;
+                }
             }
 
             return self::$specificationReference;
+        }
+
+        public static function getIDFromObjectKey($objectKey) {
+            return self::$specificationReference[$objectKey]->id;
         }
     }

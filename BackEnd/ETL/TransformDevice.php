@@ -20,27 +20,27 @@
         }
 
         function transformDevice() {
-            $rawDevice = $this->rawDevice;
             $output = $this->setDeviceIdentifiers();
-
-            $output .= $this->setDimensions($rawDevice->dimensions) . '<br>';
-            $output .= $this->setWeight($rawDevice->weight) . '<br>';
-            $output .= $this->setScreenSize($rawDevice->size) . '<br>';
-            $output .= $this->setScreenResolution($rawDevice->resolution) . '<br>';
-            $output .= $this->setExpandableStorage($rawDevice) . '<br>';
-            $output .= $this->setBluetoothVersion($rawDevice) . '<br>';
-            $output .= ($this->setRemovableBattery($rawDevice) ? "Removable" : "Non-removable") . ' Battery <br>';
-            $output .= $this->setBatteryCapacity($rawDevice) . '<br>';
-            $output .= $this->setCPU($rawDevice) . '<br>';
-            $output .= $this->setInternalStorage($rawDevice) . '<br>';
-            $output .= $this->setOS($rawDevice) . '<br>';
-            $output .= $this->setCamera($rawDevice) . '<br>';
-            $output .= $this->setTalkTime($rawDevice) . '<br>';
-            $output .= ($this->setHeadphoneJack($rawDevice) ? "3mm Jack Present" : "No 3mm Jack") . '<br>';
-            $output .= $this->setDevicePrice($rawDevice) . '<br>';
+            $output .= $this->setDimensions() . '<br>';
+            $output .= $this->setWeight() . '<br>';
+            $output .= $this->setScreenSize() . '<br>';
+            $output .= $this->setScreenResolution() . '<br>';
+            $output .= $this->setExpandableStorage() . '<br>';
+            $output .= $this->setBluetoothVersion() . '<br>';
+            $output .= ($this->setRemovableBattery() ? "Removable" : "Non-removable") . ' Battery <br>';
+            $output .= $this->setBatteryCapacity() . '<br>';
+            $output .= $this->setCPU() . '<br>';
+            $output .= $this->setInternalStorage() . '<br>';
+            $output .= $this->setOS() . '<br>';
+            $output .= $this->setCamera() . '<br>';
+            $output .= $this->setTalkTime() . '<br>';
+            $output .= ($this->setHeadphoneJack() ? "3mm Jack Present" : "No 3mm Jack") . '<br>';
+            $output .= $this->setDevicePrice() . '<br>';
 
             $output .=  '<br> <br> <br>';
             echo $output;
+
+            //self::logDevice($this->transformedDevice);
         }
 
         function setDeviceIdentifiers() {
@@ -87,23 +87,26 @@
             self::$exchangeRates->USD = 1;
         }
 
-        private function setDimensions($dimensions) {
+        private function setDimensions() {
             // Example: 142.8 x 69.6 x 8.1 mm (5.62 x 2.74 x 0.32 in)
-
-            if ($dimensions == "-") return null;
+            if (!isset($this->rawDevice->dimensions) || ($this->rawDevice->dimensions == "-")) return null;
 
             $dimensionSeparatorPattern = '( x )?';
 
-            if (preg_match_all("/".self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.'( mm)?(.*)'."/", $dimensions, $matches))
+            if (preg_match_all("/".self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.$dimensionSeparatorPattern.self::$numericPattern.'( mm)?(.*)/', $this->rawDevice->dimensions, $matches))
             {
                 $length=$matches[1][0];
                 $width=$matches[3][0];
                 $thickness=$matches[5][0];
 
-                if (stringContains($dimensions, "thickness")) {
+                if (stringContains($this->rawDevice->dimensions, "thickness")) {
                     $thickness = $matches[1][0];
+                    $this->transformedDevice->$thickness = $thickness;
                     return "Thickness: " . $thickness;
                 } else {
+                    $this->transformedDevice->length = $length;
+                    $this->transformedDevice->width = $width;
+                    $this->transformedDevice->thickness = $thickness;
                     return "Length: " . $length . "\tWidth: " . $width . " Thickness: " . $thickness;
                 }
             }
@@ -116,66 +119,91 @@
             }
         }
 
-        private function setWeight($rawWeight) {
+        private function setWeight() {
             // Example: 142 g (5.01 oz)
-            $weight = self::getNumericFromString($rawWeight, ' g');
-            if (!empty($weight)) return "Weight: " . $weight;
+            if (isNullOrEmpty($this->rawDevice->weight)) return null;
+
+            $weight = self::getNumericFromString($this->rawDevice->weight, ' g');
+            $this->transformedDevice->weight = $weight;
+            return "Weight: " . $weight;
         }
 
-        private function setScreenSize($rawScreenSize) {
+        private function setScreenSize() {
             // Example: 7.0 inches (~68.1% screen-to-body ratio)
-            $screenSize = self::getNumericFromString($rawScreenSize, ' inches');
+            if (isNullOrEmpty($this->rawDevice->size)) return null;
+
+            $screenSize = self::getNumericFromString($this->rawDevice->size, ' inches');
+            $this->transformedDevice->screen_size = $screenSize;
             if (!empty($screenSize)) return "Screen Size: " . $screenSize;
         }
 
-        private function setScreenResolution($rawResolution)
-        {
+        private function setScreenResolution() {
             // Example: 480 x 854 pixels (~196 ppi pixel density)
-            if (preg_match_all("/".'(\d*)( x )(\d*)( pixels)(.*~)(\d*)( ppi)(.*)'."/", $rawResolution, $matches)) {
+            if (isNullOrEmpty($this->rawDevice->resolution)) return null;
+
+            if (preg_match_all("/".'(\d*)( x )(\d*)( pixels)(.*~)(\d*)( ppi)(.*)'."/", $this->rawDevice->resolution, $matches)) {
                 $resolution = $matches[1][0] . 'x' . $matches[3][0];
                 $ppi = $matches[6][0];
+
+                $this->transformedDevice->resolution = $resolution;
+                $this->transformedDevice->ppi = $ppi;
+
                 return "Resolution: " . $resolution . "\tPPI: " . $ppi;
             }
         }
 
-        private function setExpandableStorage($device) {
+        private function setExpandableStorage() {
             // Example: microSD, up to 64 GB
-            if ($device->card_slot == "No") return null;
+            if (stringContains($this->rawDevice->card_slot, "No")) return null;
+            $cardStorageAmount = null;
 
-            if (preg_match_all('/(microSD, up to )(\d*)( GB)/', $device->card_slot, $matches)) {
+            if (preg_match_all('/(microSD, up to )(\d*)( GB)/', $this->rawDevice->card_slot, $matches)) {
                 $cardStorageAmount = $matches[2][0];
+                $this->transformedDevice->expandable_capacity = $cardStorageAmount;
                 return "Card Storage Amount: " . $cardStorageAmount;
             }
 
-            // A value of true -> 1 indicates expandable storage, of unknown max capacity
-            return stringContains($device->card_slot, "microSD");
+            // Indicates expandable storage, of unknown max capacity
+            if (stringContains($this->rawDevice->card_slot, "microSD")) {
+                // Defaults to 32 GB Max
+                $this->transformedDevice->expandable_capacity = 32;
+                return "Card Storage Amount: Unknown";
+            }
         }
 
-        private function setBluetoothVersion($device) {
+        private function setBluetoothVersion() {
             // Example: v4.1, A2DP, LE
-            if ($device->bluetooth == "No") return null;
-            if ($device->bluetooth == "Yes") return 0;
-
-            if (preg_match_all('/(v?)'.self::$numericPattern.'(.*)/', $device->bluetooth, $matches)) {
-                $cardStorageAmount = $matches[2][0];
-                return "Bluetooth Version: " . $cardStorageAmount;
+            if ($this->rawDevice->bluetooth == "No") return null;
+            if ($this->rawDevice->bluetooth == "Yes") {
+                // Assumes 2.1 default bluetooth version
+                $this->transformedDevice->bluetooth = 2.1;
+                return "Bluetooth Version: " . 2.1;
             }
 
-            self::logDevice($device, "Could not determine bluetooth version.");
+            if (preg_match_all('/(v?)'.self::$numericPattern.'(.*)/', $this->rawDevice->bluetooth, $matches)) {
+                $bluetooth = $matches[2][0];
+                $this->transformedDevice->bluetooth = $bluetooth;
+                return "Bluetooth Version: " . $bluetooth;
+            }
+
+            self::logDevice($this->rawDevice, "Could not determine bluetooth version.");
         }
 
-        private function setRemovableBattery($device) {
+        private function setRemovableBattery() {
             // Note case sensitive (Non-removable is other type)
-            return (stringContains($device->battery_c, "Removable"));
+            $removableBattery = stringContains($this->rawDevice->battery_c, "Removable");
+            $this->transformedDevice->removable_battery = $removableBattery;
+            return $removableBattery;
         }
 
-        private function setBatteryCapacity($device) {
-            if (preg_match_all('/([\d]+) mAh/', $device->battery_c, $matches)) {
+        private function setBatteryCapacity() {
+            if (preg_match_all('/([\d]+) mAh/', $this->rawDevice->battery_c, $matches)) {
                 $batteryCapacity = $matches[1][0];
+                $this->transformedDevice->battery_capacity = $batteryCapacity;
                 return "Battery Capacity: " . $batteryCapacity;
             }
 
-            self::logDevice($device, "Could not determine battery capacity.");
+            self::logDevice($this->rawDevice, "Could not determine battery capacity.");
         }
 
         private static function getCoreCountFromWord($device) {
@@ -189,14 +217,14 @@
             else return null;
         }
 
-        private function setCPU($device) {
+        private function setCPU() {
             // Example: Quad-core (2x2.35 GHz Kryo & 2x2.0 GHz Kryo)
-            if (!isset($device->cpu)) return null;
+            if (!isset($this->rawDevice->cpu)) return null;
 
             $totProcessing = 0.0;
-            $totActualCoreCount = self::getCoreCountFromWord($device);
+            $totActualCoreCount = self::getCoreCountFromWord($this->rawDevice);
 
-            if (preg_match_all('/(\dx)?(\d*[.]\d*|\d*) GHz/', $device->cpu, $matches)) {
+            if (preg_match_all('/(\dx)?(\d*[.]\d*|\d*) GHz/', $this->rawDevice->cpu, $matches)) {
                 $numCoresIndex = 1;
                 $processingPowerIndex = 2;
 
@@ -213,9 +241,11 @@
             // When total processing can't be determined (all cores same power)
             // Example: Quad-core 1.25 GHz Cortex-A53
             if ($totProcessing == 0)  {
-                $totProcessing = $totActualCoreCount * self::getSingleProcessingValue($device->cpu);
+                $totProcessing = $totActualCoreCount * self::getSingleProcessingValue($this->rawDevice->cpu);
             }
 
+            $this->transformedDevice->num_cores = $totActualCoreCount;
+            $this->transformedDevice->processing_power = $totProcessing;
             return "Total Cores: " . $totActualCoreCount . "\tTotal Processing Power: " . $totProcessing;
         }
 
@@ -225,31 +255,34 @@
             }
         }
 
-        private function setInternalStorage($device)
-        {
-            if (!isset($device->internal)) return null;
+        private function setInternalStorage() {
+            if (!isset($this->rawDevice->internal)) return null;
 
             // Example: 64 GB, 4 GB RAM
-            if (preg_match_all('/(\d*) (G|M)B, (\d*) (G|M)B RAM/', $device->internal, $matches)) {
+            if (preg_match_all('/(\d*) (G|M)B, (\d*) (G|M)B RAM/', $this->rawDevice->internal, $matches)) {
                 $storage = $matches[1][0];
                 $ram = $matches[3][0];
+
+                $this->transformedDevice->storage = $storage;
+                $this->transformedDevice->ram = $ram;
                 return "Storage: " . $storage . "\tRAM: " . $ram;
             }
         }
 
-        private function setOS($device)
-        {
-            if (!isset($device->os)) return null;
+        private function setOS() {
+            if (!isset($this->rawDevice->os)) return null;
 
-            $os = self::getOSFromText($device);
+            $os = self::getOSFromText($this->rawDevice);
             $osVersion = null;
 
             // Example: Android OS, v6.0.1 (Marshmallow)
-            if (preg_match_all('/[^0-9]*(\d*[.]\d*[.]\d*|\d*[.]\d*|\d*)/', $device->os, $matches)) {
+            if (preg_match_all('/[^0-9]*(\d*[.]\d*[.]\d*|\d*[.]\d*|\d*)/', $this->rawDevice->os, $matches)) {
                 $osVersion = $matches[1][0];
             }
 
-            if (isNullOrEmpty($os) || isNullOrEmpty($osVersion)) self::logDevice($device, "Could not determine OS/Version.");
+            if (isNullOrEmpty($os) || isNullOrEmpty($osVersion)) self::logDevice($this->rawDevice, "Could not determine OS/Version.");
+            $this->transformedDevice->os = $os;
+            $this->transformedDevice->os_version = $osVersion;
             return "OS: " . $os . "\tVersion: " . $osVersion;
         }
 
@@ -259,15 +292,16 @@
             foreach ($osTypes as $os) {
                 if (stringContains($device->os, $os)) return $os;
             }
-
-            return null;
         }
 
-        private function setCamera($device) {
-            $primary = (isset($device->primary)) ? self::getCameraMP($device->primary) : null;
-            $secondary = (isset($device->secondary)) ? self::getCameraMP($device->secondary) : null;
-            $video = (isset($device->video)) ? self::getVideoResolution($device->video) : null;
+        private function setCamera() {
+            $primary = (isset($this->rawDevice->primary)) ? self::getCameraMP($this->rawDevice->primary) : null;
+            $secondary = (isset($this->rawDevice->secondary)) ? self::getCameraMP($this->rawDevice->secondary) : null;
+            $video = (isset($this->rawDevice->video)) ? self::getVideoResolution($this->rawDevice->video) : null;
 
+            $this->transformedDevice->primary = $primary;
+            $this->transformedDevice->secondary = $secondary;
+            $this->transformedDevice->video = $video;
             return "Camera - Primary: " . $primary . "\tSecondary: " . $secondary . "\tVideo: " . $video . "p";
         }
 
@@ -277,8 +311,6 @@
             if (preg_match_all('/([^0-9]*)(\d*) MP/', $rawFeatureData, $matches)) {
                 return $matches[2][0];
             }
-
-            return null;
         }
 
         private static function getVideoResolution($rawFeatureData)
@@ -287,45 +319,48 @@
             if (preg_match_all('/([^0-9]*)(\d*)/', $rawFeatureData, $matches)) {
                 return $matches[0][0];
             }
-
-            return null;
         }
 
-        private function setTalkTime($device)
+        private function setTalkTime()
         {
-            if (!isset($device->talk_time)) return null;
+            if (!isset($this->rawDevice->talk_time)) return null;
 
             // Example: Up to 22 h (2G) / Up to 13 h 30 min (3G)
-            if (preg_match_all('/[^0-9]*'. self::$numericPattern . ' ?(h|H|HR|hr)/', $device->talk_time, $matches)) {
+            if (preg_match_all('/[^0-9]*'. self::$numericPattern . ' ?(h|H|HR|hr)/', $this->rawDevice->talk_time, $matches)) {
                 $talkTime = $matches[1][0];
 
+                $this->transformedDevice->talk_time = $talkTime;
                 return "Talk Time: " . $talkTime;
             }
         }
 
-        private function setHeadphoneJack($device)
+        private function setHeadphoneJack()
         {
             // Example: Yes
-            return stringContains($device->_3_5mm_jack_, "Yes");
+            $jackPresent = stringContains($this->rawDevice->_3_5mm_jack_, "Yes");
+            $this->transformedDevice->_3_5mm_jack_ = $jackPresent;
+            return $jackPresent;
         }
 
-        private function setDevicePrice($device) {
+        private function setDevicePrice() {
             // Gets the USD price of device based on current exchange rates
-            if (!isset($device->price_group)) return null;
+            if (!isset($this->rawDevice->price_group)) return null;
+            $price = null;
 
-            if (preg_match_all('/'. self::$numericPattern . ' (EUR|USD|AUD|CAD|CZK|DKK|GBP|HKD|IDR|MXN|INR|JPY|NOK|NZD|RUB)/', $device->price_group, $matches)) {
+            if (preg_match_all('/'. self::$numericPattern . ' (EUR|USD|AUD|CAD|CZK|DKK|GBP|HKD|IDR|MXN|INR|JPY|NOK|NZD|RUB)/', $this->rawDevice->price_group, $matches)) {
                 $deviceLocalPrice = $matches[1][0];
                 $currency = $matches[2][0];
 
                 //echo "Local Price: ${$deviceLocalPrice} in {$currency} <br>";
 
                 if (isset($deviceLocalPrice) && isset($currency)) {
-                    $device->Price = self::getUSDPrice($deviceLocalPrice, $currency);
+                    $price = self::getUSDPrice($deviceLocalPrice, $currency);
                 }
             }
 
-            if (isset($device->Price) && !is_null($device->Price) && ($device->Price != 0)) {
-                return "Price: $" . $device->Price;
+            if (!isNullOrEmpty($price) && ($price != 0)) {
+                $this->transformedDevice->price = $price;
+                return "Price: $" . $price;
             }
         }
 

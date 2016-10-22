@@ -177,7 +177,7 @@
         }
 
         // TODO: Implement brand filtering
-        public static function getLatest($brand = null, $limit = 1) {
+        public static function getLatest($brand = null, $limit = 100) {
             $deviceAPI = new GsmAPI();
             $rawDevices = $deviceAPI->search($brand);
             $parsedDevices = array();
@@ -200,6 +200,7 @@
                         // Adds device name and image from main device detail object, to merged device object
                         $mergedFieldsDevice->DeviceName = $deviceDetail->DeviceName;
                         $mergedFieldsDevice->DeviceIMG = $deviceDetail->DeviceIMG;
+                        $mergedFieldsDevice->Source_URL = strip_tags($device["slug"]);
 
                         // Sets device brand
                         $mergedFieldsDevice = self::addBrand($mergedFieldsDevice);
@@ -209,7 +210,7 @@
                     }
 
                     // Returns only one device
-                    if ($limit == 1) {
+                    if (count($parsedDevices) == $limit) {
                         break;
                     }
                 }

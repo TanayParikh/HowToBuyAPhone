@@ -4,7 +4,6 @@
 
     class TransformDevice
     {
-        static $saveToDatabase;
         static $displayDevice;
         static $specificationDefinitions;
 
@@ -16,7 +15,6 @@
 
         function __construct($device) {
             $this->rawDevice = $device;
-            $this->transformDevice();
         }
 
         function transformDevice() {
@@ -38,12 +36,14 @@
             $output .= $this->setDevicePrice() . '<br>';
 
             $output .=  '<br> <br> <br>';
-            echo $output;
 
+            if (self::$displayDevice) echo $output;
+
+            return $this->transformedDevice;
             //self::logDevice($this->transformedDevice);
         }
 
-        function setDeviceIdentifiers() {
+        private function setDeviceIdentifiers() {
             $output = null;
 
             if (!isNullOrEmpty($this->rawDevice->DeviceName)) {
@@ -71,11 +71,14 @@
                 $this->transformedDevice->DeviceIMG = $this->rawDevice->DeviceIMG;
             }
 
+            if (!isNullOrEmpty($this->rawDevice->Source_URL)) {
+                $this->transformedDevice->Source_URL = $this->rawDevice->Source_URL;
+            }
+
             return $output;
         }
 
-        public static function init($saveToDatabase = false, $displayDevice = false) {
-            self::$saveToDatabase = $saveToDatabase;
+        public static function init($displayDevice = false) {
             self::$displayDevice = $displayDevice;
             self::getExchangeRates();
             //SpecificationDefinition::init();

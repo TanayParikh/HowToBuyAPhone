@@ -8,12 +8,14 @@
         public static function startProcessing() {
             // Sets up application data and settings
             SpecificationDefinition::init();
+            TransformDevice::init(true);
             $devices = ExtractDevice::getDevices();
 
             // Processes individual devices
-            foreach ($devices as $device) {
-                $transformDevice = new TransformDevice($device);
-                // TODO: Load device
+            foreach ($devices as $rawDevice) {
+                $transformedDevice = (new TransformDevice($rawDevice))->transformDevice();
+                LoadDevice::loadRawDevice($rawDevice);
+                LoadDevice::loadTransformedDevice($transformedDevice);
             }
         }
     }

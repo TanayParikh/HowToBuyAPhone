@@ -35,3 +35,8 @@
     function isNullOrEmpty($rawText){
         return (!isset($rawText) || empty($rawText));
     }
+
+    function removeTrailingComma($text) {
+        if (substr($text, -1) == ',') $text = substr($text, 0, strlen($text) -1);
+        return $text;
+    }

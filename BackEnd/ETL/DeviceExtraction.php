@@ -2,16 +2,21 @@
     include_once("DataSources/FonoAPI.php");
     include_once("DataSources/GsmAPI.php");
     include_once($_SERVER['DOCUMENT_ROOT'] . "/BackEnd/Configuration.php");
+    include_once($_SERVER['DOCUMENT_ROOT'] . "/BackEnd/SpecificationDefinition.php");
 
     class DeviceExtraction {
         private static $numericPattern = '(\d*[.]\d*|\d*)';
         const DATA_SOURCE = "customApi";
         private static $exchangeRates;
+        private static $specificationDefinitions;
 
         public static function startProcessing() {
+            // Sets up application data and settings
+            self::$specificationDefinitions = SpecificationDefinition::getSpecificationDefinitions();
             $devices = self::getDevices();
             self::setExchangeRates();
 
+            // Processes individual devices
             foreach ($devices as $device) {
                 self::scanDevice($device);
             }

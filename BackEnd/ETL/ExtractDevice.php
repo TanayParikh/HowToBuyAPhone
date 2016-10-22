@@ -16,7 +16,7 @@
                     $fonoapi = FonoApi::init(configuration::$apiKey);
                     $devices = $fonoapi::getLatest(null, 20);
                 } else if (self::DATA_SOURCE == "customApi") {
-                    $devices = GsmAPI::getLatest(null, 1);
+                    $devices = GsmAPI::getLatest(null, 2);
                 }
 
                 $devices = self::validateDevices($devices);
@@ -36,13 +36,15 @@
                     echo '<br>' . $device->DeviceName . " was not processed as it is a watch device." . '<br>'. '<br>';
 
                 // Filters out tablets
-                } else if (stringContains($device->DeviceName, "Tab") || stringContains($device->DeviceName, "Pad")) {
-                    echo '<br>' . $device->DeviceName . " was not processed as it is a tablet device." . '<br>'. '<br>';
+                } else if (isset($device->DeviceName) && (stringContains($device->DeviceName, "Tab") || stringContains($device->DeviceName, "Pad"))) {
+                    echo '<br>' . $device->DeviceName . " was not processed as it is a tablet device." . '<br>' . '<br>';
+
+                } else if (isset($device->status) && stringContains($device->status, "Rumored")) {
+                    echo '<br>' . $device->DeviceName . " was not processed as it was just rumoured in status." . '<br>' . '<br>';
 
                 // Filters out devices previously scanned
-                } else if (self::devicePreviouslyScanned($device))  {
-                    echo '<br>' . $device->DeviceName . " was not processed as it was either scanned previously or is just rumoured in status." . '<br>'. '<br>';
-
+                } else if (self::deviceExists($device))  {
+                    echo '<br>' . $device->DeviceName . " was not processed as it was scanned previously." . '<br>'. '<br>';
                 } else {
                     $validDevices[] = $device;
                 }
@@ -51,42 +53,32 @@
             return $validDevices;
         }
 
-        public static function devicePreviouslyScanned($device) {
+        public static function deviceExists($device) {
             // Creates a PDO statement and binds the appropriate parameters
             $db = Configuration::getConnection();
 
-            if (!self::deviceAvailable($device->status)) return true;
-
+            // Sets date
             $date = self::getDateAnnounced($device->announced);
             if ($date == null) return true;
-
             $device->announced = $date;
 
-            // Builds dynamic query
-            $sql = build_query([
-                [										"SELECT COUNT(*) FROM htbap.devices_scanned WHERE device_name = :name"],
-                [$date         			,' AND ', 'date_announced=:date_announced'],
-                [$device->status    ,' AND ',   'status=:status']
-            ]);
+            $sql = "SELECT COUNT(*) FROM htbap.device WHERE name = :name AND release_date=:date_announced";
 
             $device_count_stmt = $db->prepare($sql);
             $device_count_stmt->bindParam(':name', $device->DeviceName, PDO::PARAM_INT);
-
-            // Optional bindings.
-            $date &&       $device_count_stmt->bindValue(':date_announced', $date, \PDO::PARAM_STR);
-            $device->status &&    $device_count_stmt->bindValue(':status', $device->status, \PDO::PARAM_STR);
-
+            $device_count_stmt->bindValue(':date_announced', $date, PDO::PARAM_STR);
             // Executes query & returns whether entries matching the description are already in db
-            if ($device_count_stmt->execute()) {
-                return (($device_count_stmt->fetchColumn()) > 0);
-            } else {
-                echo '<br>' . "query failed" . '<br>';
-                return false;
+            try {
+                if ($device_count_stmt->execute()) {
+                    $count = ($device_count_stmt->fetchColumn());
+                    return ($count != 0);
+                } else {
+                    echo '<br>' . "query failed" . '<br>';
+                    return true;
+                }
+            }catch (Exception $ex) {
+                echo 'error: ' . $ex->getMessage();
             }
-        }
-
-        static function deviceAvailable($status) {
-            return !(stringContains($status, "Rumored"));
         }
 
 

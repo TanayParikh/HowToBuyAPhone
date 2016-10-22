@@ -1,5 +1,5 @@
 <?php
-    include_once("ExtractExtractDevice.php");
+    include_once("ExtractDevice.php");
     include_once("TransformDevice.php");
     include_once("LoadDevice.php");
 

@@ -8,11 +8,10 @@
         private static $numericPattern = '(\d*[.]\d*|\d*)';
         const DATA_SOURCE = "customApi";
         private static $exchangeRates;
-        private static $specificationDefinitions;
 
         public static function startProcessing() {
             // Sets up application data and settings
-            self::$specificationDefinitions = SpecificationDefinition::getSpecificationDefinitions();
+            SpecificationDefinition::init();
             $devices = self::getDevices();
             self::setExchangeRates();
 

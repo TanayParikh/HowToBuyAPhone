@@ -3,6 +3,8 @@
 
     class SpecificationDefinition
     {
+        public static $specificationDefinitions;
+
         public $id;
         public $name;
         public $level;
@@ -10,7 +12,10 @@
         public $api_key;
 
         // Gets specification definition assoc array
-        public static function getSpecificationDefinitions() {
+        public static function init() {
+            // Only configures definitions if not already set
+            if (isset(self::$specificationDefinitions)) return null;
+
             $db = Configuration::getConnection();
             $stmt = $db->prepare("SELECT id, name, level, units, api_key FROM htbap.specification_definition");
 
@@ -20,12 +25,12 @@
             $definitions = $stmt->fetchAll(PDO::FETCH_CLASS, "SpecificationDefinition");
 
             // Creates new assoc array with key of Specification name and value as the SpecificationDefinition object
-            $specificationDefinitions = array();
+            self::$specificationDefinitions = array();
 
             foreach ($definitions as $definition) {
-                $specificationDefinitions[$definition->name] = $definition;
+                self::$specificationDefinitions[$definition->name] = $definition;
             }
 
-            return $specificationDefinitions;
+            return self::$specificationDefinitions;
         }
     }

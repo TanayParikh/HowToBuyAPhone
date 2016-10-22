@@ -12,26 +12,42 @@
 
         public static function loadTransformedDevice($transformedDevice)
         {
-            $id = self::createDevice($transformedDevice);
+            $id = self::insertDevice($transformedDevice);
             $transformedDevice = (array) $transformedDevice;
 
-
-
             foreach ($transformedDevice as $objectKey => $value) {
-
+                self::insertSpecification($id, $objectKey, $value);
+                //break;
             }
         }
 
-        private static function createDevice($transformedDevice)
-        {
-            // Creates a PDO statement and binds the appropriate parameters
+        private static function insertSpecification($deviceID, $objectKey, $value) {
             $db = Configuration::getConnection();
 
-            $id =  self::insertIntoTblDevice($transformedDevice, $db);
+            $specificationID = SpecificationDefinition::getIDFromObjectKey($objectKey);
+
+            $stmt = $db->prepare("INSERT INTO htbap.device_specification (device_id, specification_id, value) VALUES(:deviceID, :specificationID, :value);");
+
+            $stmt->bindParam(':deviceID', $deviceID, PDO::PARAM_INT);
+            $stmt->bindParam(':specificationID', $specificationID, PDO::PARAM_INT);
+            $stmt->bindParam(':value', $value, PDO::PARAM_STR);
+
+            try {
+                // Executes query & returns whether entries matching the description are already in db
+                if ($stmt->execute()) {
+                    return true;
+                } else {
+                    echo '<br>' . "query failed" . '<br>';
+                    return false;
+                }
+            } catch (Exception $ex) {
+                echo $ex->getMessage();
+            }
         }
 
-        private static function insertIntoTblDevice($transformedDevice, $db)
-        {
+        private static function insertDevice($transformedDevice) {
+            $db = Configuration::getConnection();
+
             $fieldsToInsert = "name, brand, release_date,";
             $values = ":name, :brand, :date,";
             if (isset($transformedDevice->DeviceIMG)) {
@@ -47,7 +63,7 @@
             $fieldsToInsert = removeTrailingComma($fieldsToInsert);
             $values = removeTrailingComma($values);
 
-            $stmt = $db->prepare("INSERT INTO htbap.device ($fieldsToInsert) VALUES($values);");
+            $stmt = $db->prepare("INSERT INTO htbap.device ($fieldsToInsert) VALUES($values) RETURNING id;");
 
             $stmt->bindParam(':name', $transformedDevice->DeviceName, PDO::PARAM_STR);
             $stmt->bindParam(':brand', $transformedDevice->Brand, PDO::PARAM_STR);
@@ -58,8 +74,15 @@
             try {
                 // Executes query & returns whether entries matching the description are already in db
                 if ($stmt->execute()) {
-                    echo 'sa';
-                    return (($stmt->fetchColumn()) > 0);
+                    unset($transformedDevice->DeviceName);
+                    unset($transformedDevice->Brand);
+                    unset($transformedDevice->announced);
+                    unset($transformedDevice->status);
+                    unset($transformedDevice->DeviceIMG);
+                    unset($transformedDevice->Source_URL);
+
+                    // Returns device id
+                    return $stmt->fetchColumn(0);
                 } else {
                     echo '<br>' . "query failed" . '<br>';
                     return false;
@@ -69,4 +92,3 @@
             }
         }
     }
-    

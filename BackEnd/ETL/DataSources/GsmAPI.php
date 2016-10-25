@@ -41,12 +41,15 @@
         }
         ####################### END cURL ##########################
 
-        function search($brand = null)
+        function search($url = null)
         {
             $result = array();
 
             // Run cURL
-            $url  = 'http://www.gsmarena.com/results.php3?nYearMin=' . date('Y') . '&sAvailabilities=1,2';
+            if (is_null($url)) {
+                // Gets latest devices
+                $url  = 'http://www.gsmarena.com/results.php3?nYearMin=' . date('Y') . '&sAvailabilities=1,2';
+            }
 
             $ngecurl = $this->mycurl($url);
 
@@ -178,8 +181,32 @@
 
         // TODO: Implement brand filtering
         public static function getLatest($brand = null, $limit = 100) {
+            $url = 'http://www.gsmarena.com/results.php3?nYearMin=' . date('Y') . '&sAvailabilities=1,2';
+            return self::getDevices($limit, $url);
+        }
+
+        public static function getDevicesAllBrands($limit) {
+            $devices = array();
+
+            for ($i = 5; $i < 7; ++$i) {
+                $url = "http://www.gsmarena.com/results.php3?nYearMin=2014&sMakers={$i}&sAvailabilities=1,2";
+                //echo var_dump();
+                $devices = array_merge($devices, self::getDevices($limit, $url));
+            }
+
+            return $devices;
+        }
+
+        private static function addBrand($mergedFieldsDevice) {
+            // Sets brand to be first word of device name
+            $mergedFieldsDevice->Brand = explode(' ',trim($mergedFieldsDevice->DeviceName))[0];
+            return $mergedFieldsDevice;
+        }
+
+        private static function getDevices($limit, $url)
+        {
             $deviceAPI = new GsmAPI();
-            $rawDevices = $deviceAPI->search($brand);
+            $rawDevices = $deviceAPI->search($url);
             $parsedDevices = array();
 
             // Indicates devices were found
@@ -188,13 +215,11 @@
                     $deviceDetail = $deviceAPI->detail($device["slug"]);
 
                     if ($deviceDetail->status == "success") {
-                        //echo $deviceDetail->DeviceName . '<br>';
-                        //echo '<IMG SRC="'. $deviceDetail->DeviceIMG .  '" ALT="some text"> <br>';
                         $mergedFieldsDevice = null;
 
                         // Merges together specifications from different groupings (Platform, Memory, Camera etc)
                         foreach ($deviceDetail->data as $grouping) {
-                            $mergedFieldsDevice = (object) array_merge((array) $mergedFieldsDevice, (array) $grouping);
+                            $mergedFieldsDevice = (object)array_merge((array)$mergedFieldsDevice, (array)$grouping);
                         }
 
                         // Adds device name and image from main device detail object, to merged device object
@@ -217,12 +242,6 @@
             }
 
             return $parsedDevices;
-        }
-
-        private static function addBrand($mergedFieldsDevice) {
-            // Sets brand to be first word of device name
-            $mergedFieldsDevice->Brand = explode(' ',trim($mergedFieldsDevice->DeviceName))[0];
-            return $mergedFieldsDevice;
         }
     }
 

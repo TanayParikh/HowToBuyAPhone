@@ -290,7 +290,7 @@
         }
 
         private static function getOSFromText($device) {
-            $osTypes = array("Android Wear", "Android", "iOS", "watchOS", "Tizen", "BlackBerry");
+            $osTypes = array("Android Wear", "Android", "iOS", "watchOS", "Tizen", "BlackBerry", "Windows Phone", "Firefox");
 
             foreach ($osTypes as $os) {
                 if (stringContains($device->os, $os)) return $os;

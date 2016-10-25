@@ -5,9 +5,18 @@
     class LoadDevice
     {
 
-        public static function loadRawDevice($rawDevice)
+        public static function exportDeviceToFile($device)
         {
+            // TODO: Account for files of the same name
+            $filePath = "{$device->DeviceName}.txt";
+            $filePath = self::sanitizeFileName($filePath);
+            $filePath = $_SERVER['DOCUMENT_ROOT'] . "/BackEnd/RawDevices/" . $filePath;
 
+            // Encodes device object
+            $encodedObject = json_encode($device, JSON_PRETTY_PRINT);
+
+            // Exports to file
+            file_put_contents($filePath, $encodedObject);
         }
 
         public static function loadTransformedDevice($transformedDevice)
@@ -90,5 +99,18 @@
             } catch (Exception $ex) {
                 echo $ex->getMessage();
             }
+        }
+
+        private static function sanitizeFileName($filePath)
+        {
+            // Remove anything which isn't a word, whitespace, number
+            // or any of the following characters -_~,;[]().
+            // If you don't need to handle multi-byte characters
+            // you can use preg_replace rather than mb_ereg_replace
+            $filePath = mb_ereg_replace('([^\w\s\d\-_~,;\[\]\(\).])', '', $filePath);
+
+            // Remove any runs of periods (thanks falstro!)
+            $filePath = mb_ereg_replace('([\.]{2,})', '', $filePath);
+            return $filePath;
         }
     }

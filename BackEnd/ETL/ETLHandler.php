@@ -14,7 +14,11 @@
             // Processes individual devices
             foreach ($devices as $rawDevice) {
                 $transformedDevice = (new TransformDevice($rawDevice))->transformDevice();
-                LoadDevice::loadRawDevice($rawDevice);
+
+                // Exports raw device to JSON file for backup
+                LoadDevice::exportDeviceToFile($rawDevice);
+
+                // Loads transformed device to db
                 LoadDevice::loadTransformedDevice($transformedDevice);
             }
         }
